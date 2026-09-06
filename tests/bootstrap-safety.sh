@@ -94,7 +94,7 @@ grep -F 'not owned and writable by the current user' <<<"$unwritable_output" >/d
 test "$(shasum -a 256 "$test_root/unwritable-profile")" = "$unwritable_before"
 
 printf 'participant differently owned setting\n' > "$test_root/wrong-owner-profile"
-sudo -n chown root:root "$test_root/wrong-owner-profile"
+sudo -n chown 0 "$test_root/wrong-owner-profile"
 wrong_owner_before=$(shasum -a 256 "$test_root/wrong-owner-profile")
 if script --version >/dev/null 2>&1; then
   wrong_owner_output=$(script -qec "env HOME='$test_root/home' PATH='$test_root/bin:/usr/bin:/bin' VIBE_SETUP_SHELL_PROFILE='$test_root/wrong-owner-profile' VIBE_SETUP_PREFLIGHT_ONLY=1 /bin/bash '$setup'" /dev/null 2>&1 || true)
