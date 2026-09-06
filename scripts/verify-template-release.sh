@@ -6,11 +6,10 @@ set -euo pipefail
 
 cd "$(git rev-parse --show-toplevel)"
 
-mapfile -d '' indexed_files < <(git ls-files --cached --others --exclude-standard -z)
 candidate_files=()
-for file in "${indexed_files[@]}"; do
-  [[ -f "$file" ]] && candidate_files+=("$file")
-done
+while IFS= read -r -d '' file; do
+  [[ -f "$file" ]] && candidate_files[${#candidate_files[@]}]="$file"
+done < <(git ls-files --cached --others --exclude-standard -z)
 if (( ${#candidate_files[@]} == 0 )); then
   echo "Stopping: no release-candidate files found." >&2
   exit 1
