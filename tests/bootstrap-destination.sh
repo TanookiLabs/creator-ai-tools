@@ -29,7 +29,8 @@ TEMPLATE_REPOSITORY="$test_root/source"
 TEMPLATE_COMMIT=$(git -C "$test_root/source" rev-parse HEAD)
 
 mkdir -p "$test_root/paths/existing"
-test "$(resolve_destination "$test_root/paths/new/../project")" = "$test_root/paths/project"
+expected_paths_root=$(cd "$test_root/paths" && pwd -P)
+test "$(resolve_destination "$test_root/paths/new/../project")" = "$expected_paths_root/project"
 
 root="$test_root/Documents/src/my-app"
 test "$(destination_state "$root")" = absent
