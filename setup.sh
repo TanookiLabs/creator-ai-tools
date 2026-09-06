@@ -10,11 +10,12 @@ set -e
 # Bootstrap release identity. Keep this value aligned with the immutable
 # release tag used by the README invocation.
 BOOTSTRAP_VERSION="1.0.0"
+BOOTSTRAP_RELEASE_TAG="bootstrap-v${BOOTSTRAP_VERSION}"
 ACTIVE_PHASE="startup validation"
 TEMPLATE_REPOSITORY="https://github.com/TanookiLabs/creator-ai-tools"
-TEMPLATE_COMMIT="0393501676cf5f3751089699eafb5090411ff8c7"
 BOOTSTRAP_REPOSITORY="https://github.com/TanookiLabs/creator-ai-tools"
-BOOTSTRAP_COMMIT="0393501676cf5f3751089699eafb5090411ff8c7"
+TEMPLATE_COMMIT=""
+BOOTSTRAP_COMMIT=""
 CONTRACT_VERSION="1.0"
 RUN_STARTED_AT=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
 SHELL_CONFIGURATION_CHANGED=false
@@ -1094,6 +1095,15 @@ valid_project_name() {
   [[ "$1" =~ ^[a-z0-9][a-z0-9._-]{0,62}$ && "$1" != "." && "$1" != ".." ]]
 }
 
+resolve_release_commit() {
+  local release_ref="refs/tags/${BOOTSTRAP_RELEASE_TAG}" refs commit
+  refs=$(git ls-remote "$TEMPLATE_REPOSITORY" "$release_ref" "${release_ref}^{}") || return 1
+  commit=$(printf '%s\n' "$refs" | awk '$2 ~ /\^\{\}$/ { peeled=$1 } $2 !~ /\^\{\}$/ { direct=$1 } END { print peeled ? peeled : direct }')
+  [[ "$commit" =~ ^[0-9a-f]{40}$ ]] || return 1
+  TEMPLATE_COMMIT="$commit"
+  BOOTSTRAP_COMMIT="$commit"
+}
+
 template_origin_is_approved() {
   local root="$1" origin
   origin=$(git -C "$root" remote get-url origin 2>/dev/null || true)
@@ -1162,6 +1172,13 @@ checkout_template() {
 }
 
 SRC_DIR="${VIBE_SETUP_SOURCE_DIR:-$DEFAULT_SRC_DIR}"
+
+ACTIVE_PHASE="release provenance verification"
+if ! resolve_release_commit; then
+  fail "The approved release tag could not be resolved: ${BOOTSTRAP_RELEASE_TAG}"
+  exit 1
+fi
+
 PROJECT_NAME="${VIBE_SETUP_PROJECT_NAME:-my-first-app}"
 if [[ -z "${VIBE_SETUP_PROJECT_NAME:-}" ]]; then
   PROJECT_NAME=$(prompt_value "Project name: " "$PROJECT_NAME")
@@ -1288,22 +1305,29 @@ fi
 # Step 8: Summary and Claude handoff
 # ═════════════════════════════════════════════════════════════════
 
-header "Setup complete!"
-
-confetti
+if [[ "$POSTGRES_VERIFIED" == "true" && "$GITHUB_VERIFIED" == "true" && "$DESKTOP_VERIFIED" == "true" && -n "${GIT_NAME:-}" && -n "${GIT_EMAIL:-}" ]]; then
+  SETUP_READY=true
+  SUMMARY_TITLE="Your Mac is ready."
+  header "Setup complete!"
+  confetti
+else
+  SETUP_READY=false
+  SUMMARY_TITLE="Setup needs your attention."
+  header "Setup needs attention"
+fi
 
 gum style \
   --border rounded \
   --border-foreground 76 \
   --padding "1 3" \
   --margin "0 2" \
-  "$(gum style --foreground 76 --bold "Your Mac is ready.")" \
+  "$(gum style --foreground 76 --bold "$SUMMARY_TITLE")" \
   "" \
   "$(gum style --foreground 76 "  ✓") Xcode tools, Homebrew, Git, build libraries" \
   "$(gum style --foreground 76 "  ✓") mise with Node.js and Ruby" \
-  "$(gum style --foreground 76 "  ✓") Postgres.app database" \
+  "$(gum style --foreground 76 "  $([[ "$POSTGRES_VERIFIED" == "true" ]] && printf '✓' || printf '!')") Postgres.app database: $([[ "$POSTGRES_VERIFIED" == "true" ]] && printf 'verified' || printf 'participant action required')" \
   "$(gum style --foreground 76 "  $([[ "$GITHUB_VERIFIED" == "true" ]] && printf '✓' || printf '!')") GitHub authentication: $([[ "$GITHUB_VERIFIED" == "true" ]] && printf 'verified in GUI context' || printf 'participant action required')" \
-  "$(gum style --foreground 76 "  ✓") Git identity configured" \
+  "$(gum style --foreground 76 "  $([[ -n "${GIT_NAME:-}" && -n "${GIT_EMAIL:-}" ]] && printf '✓' || printf '!')") Git identity: $([[ -n "${GIT_NAME:-}" && -n "${GIT_EMAIL:-}" ]] && printf 'configured' || printf 'participant action required')" \
   "$(gum style --foreground 76 "  ✓") Claude Code installed" \
   "$(gum style --foreground 76 "  $([[ "$DESKTOP_VERIFIED" == "true" ]] && printf '✓' || printf '!')") Claude Desktop handoff: $([[ "$DESKTOP_VERIFIED" == "true" ]] && printf 'confirmed' || printf 'manual action available')" \
   "$(gum style --foreground 76 "  ✓") Project root: $PROJECT_ROOT"

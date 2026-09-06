@@ -12,7 +12,7 @@ readme="$repo_root/README.md"
 grep -F 'github_auth_context_is_authoritative' "$setup" >/dev/null
 grep -F 'SSH_CONNECTION' "$setup" >/dev/null
 grep -F 'gui_context_required' "$setup" >/dev/null
-if rg -n '^[[:space:]]*gh auth login([[:space:]]|$)' "$setup"; then
+if grep -nE '^[[:space:]]*gh auth login([[:space:]]|$)' "$setup"; then
   echo "The bootstrap must not automate GitHub authentication." >&2
   exit 1
 fi
@@ -21,9 +21,9 @@ documented_digest=$(sed -n "s/.*'\([0-9a-f]\{64\}\)' \"\$bootstrap_tmp\/setup.sh
 actual_digest=$(shasum -a 256 "$setup" | awk '{print $1}')
 test "$documented_digest" = "$actual_digest"
 
-platform_line=$(rg -n 'uname -s' "$setup" | head -1 | cut -d: -f1)
-profile_validation_line=$(rg -n '^validate_shell_profile$' "$setup" | head -1 | cut -d: -f1)
-discovery_line=$(rg -n '^BREW_STATE=' "$setup" | head -1 | cut -d: -f1)
+platform_line=$(grep -n 'uname -s' "$setup" | head -1 | cut -d: -f1)
+profile_validation_line=$(grep -n '^validate_shell_profile$' "$setup" | head -1 | cut -d: -f1)
+discovery_line=$(grep -n '^BREW_STATE=' "$setup" | head -1 | cut -d: -f1)
 test "$platform_line" -lt "$profile_validation_line"
 test "$profile_validation_line" -lt "$discovery_line"
 
@@ -98,7 +98,7 @@ grep -F 'shell profile is a symbolic link' <<<"$unsafe_output" >/dev/null
 test "$(cat "$test_root/profile-target")" = 'participant setting'
 test ! -e "$test_root/home/.unsafe-profile-created"
 
-if rg -n 'curl[^\n|]*\|[[:space:]]*(ba)?sh' "$readme"; then
+if grep -nE 'curl[^|]*\|[[:space:]]*(ba)?sh' "$readme"; then
   echo "Interactive curl-to-shell guidance remains in a primary entrypoint." >&2
   exit 1
 fi

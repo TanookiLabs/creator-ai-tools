@@ -26,7 +26,7 @@ if ! curl --fail --location --silent --show-error --output "$bootstrap_tmp/setup
   echo "Bootstrap download failed. No setup changes were made. Check your connection, then run these commands again."
   exit 1
 fi
-if ! printf '%s  %s\n' '4b9e8d741072d5a1465777620cc2923e4249efbfbc727950f00a1d6c9eeffdd7' "$bootstrap_tmp/setup.sh" | shasum -a 256 --check --status; then
+if ! printf '%s  %s\n' '3d018c8128da5c0e5286ad31d7ae6aaa300befb7e616922611beaa07123242cb' "$bootstrap_tmp/setup.sh" | shasum -a 256 --check --status; then
   echo "Bootstrap integrity check failed. No setup changes were made. Exit this shell, then retry from this page."
   exit 1
 fi

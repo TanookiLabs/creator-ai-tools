@@ -12,8 +12,15 @@ const repository = "https://github.com/example/starter"
 function fixture() {
   const root = realpathSync(mkdtempSync(join(tmpdir(), "first-session-")))
   for (const directory of ["app", "prisma", ".first-app", "bin"]) mkdirSync(join(root, directory), { recursive: true })
-  for (const file of ["CLAUDE.md", "package-lock.json", "next.config.ts", "app/page.tsx", "prisma/schema.prisma"]) writeFileSync(join(root, file), "")
-  writeFileSync(join(root, "package.json"), JSON.stringify({ private: true }))
+  for (const file of ["CLAUDE.md", "next.config.ts", "app/page.tsx", "prisma/schema.prisma"]) writeFileSync(join(root, file), "")
+  writeFileSync(join(root, "package.json"), JSON.stringify({ name: "first-session-fixture", version: "1.0.0", private: true }))
+  writeFileSync(join(root, "package-lock.json"), JSON.stringify({
+    name: "first-session-fixture",
+    version: "1.0.0",
+    lockfileVersion: 3,
+    requires: true,
+    packages: { "": { name: "first-session-fixture", version: "1.0.0" } },
+  }))
   execFileSync("git", ["init", "--quiet"], { cwd: root })
   for (const name of ["gh", "psql"]) {
     writeFileSync(join(root, "bin", name), `#!/bin/sh\nif [ "$1" = "--version" ]; then echo '${name} version 1.0'; else ${name === "psql" ? "echo 1" : "exit 0"}; fi\n`)
@@ -53,7 +60,7 @@ test("records real checks through supported receipt fields without leaking conne
   const secretUrl = ["postgresql", "://participant:", "super-secret-value", "@localhost/application"].join("")
   const environment = { ...process.env, PATH: `${join(root, "bin")}:${process.env.PATH}`, DATABASE_URL: secretUrl }
   const { receipt } = await verifyFirstSession(root, { environment, observePreview: async () => ({ started: true, preview: true }) })
-  assert.equal(receipt.result.status, "success")
+  assert.equal(receipt.result.status, "success", JSON.stringify(receipt.result.failed_capability_ids))
   assert.ok(receipt.capabilities.filter(item => item.id.startsWith("desktop.")).every(item => item.status === "verified"))
   assert.ok(receipt.capabilities.find(item => item.id === "service.postgres")?.status === "verified")
   assert.deepEqual(receipt.participant_actions, [])

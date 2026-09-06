@@ -19,11 +19,11 @@ grep -F 'TanookiLabs/creator-ai-tools' "$contract" >/dev/null
 grep -F 'BOOTSTRAP_REPOSITORY="https://github.com/TanookiLabs/creator-ai-tools"' "$setup" >/dev/null
 grep -F 'TEMPLATE_REPOSITORY="https://github.com/TanookiLabs/creator-ai-tools"' "$setup" >/dev/null
 
-if rg -n 'raw\.githubusercontent\.com/[^ /]+/[^ /]+/(main|master)/|codeload\.github\.com/[^ /]+/[^ /]+/(zip|tar\.gz)/(main|master)([^[:alnum:]]|$)' "${active_sources[@]}"; then
+if grep -nE 'raw\.githubusercontent\.com/[^ /]+/[^ /]+/(main|master)/|codeload\.github\.com/[^ /]+/[^ /]+/(zip|tar\.gz)/(main|master)([^[:alnum:]]|$)' "${active_sources[@]}"; then
   echo "A moving production source is present in active bootstrap documentation or code." >&2
   exit 1
 fi
-if rg -n 'ericskiff/vibe-setup|slow-ventures/creator-ai-tools' "${active_sources[@]}"; then
+if grep -nE 'ericskiff/vibe-setup|slow-ventures/creator-ai-tools' "${active_sources[@]}"; then
   echo "An obsolete bootstrap source is present in active documentation or code." >&2
   exit 1
 fi
@@ -37,8 +37,8 @@ documented_digest=$(sed -n "s/.*'\([0-9a-f]\{64\}\)' \"\$bootstrap_tmp\/setup.sh
 actual_digest=$(shasum -a 256 "$setup" | awk '{print $1}')
 test "$documented_digest" = "$actual_digest"
 
-if rg -n 'curl[^|\n]*\|[[:space:]]*(ba)?sh' "$readme" || \
-   rg -n -- '--dangerously-skip-permissions|--permission-mode[ =](bypassPermissions|dontAsk)' "${active_sources[@]}"; then
+if grep -nE 'curl[^|]*\|[[:space:]]*(ba)?sh' "$readme" || \
+   grep -nE -- '--dangerously-skip-permissions|--permission-mode[ =](bypassPermissions|dontAsk)' "${active_sources[@]}"; then
   echo "Unsafe invocation or permission flags are present." >&2
   exit 1
 fi

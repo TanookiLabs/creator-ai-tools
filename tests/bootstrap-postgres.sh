@@ -54,7 +54,7 @@ grep -F 'Initialize' <<<"$recovery" >/dev/null
 grep -F '"Retry the bounded check"' "$setup" >/dev/null
 grep -F '"Continue without database readiness"' "$setup" >/dev/null
 grep -F '"Stop setup"' "$setup" >/dev/null
-if rg -n 'psql .*password|PGPASSWORD|DATABASE_URL' "$setup"; then
+if grep -nE 'psql .*password|PGPASSWORD|DATABASE_URL' "$setup"; then
   echo "Credential-bearing database invocation is present." >&2
   exit 1
 fi

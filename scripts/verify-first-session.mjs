@@ -161,6 +161,7 @@ export async function verifyFirstSession(root = process.cwd(), options = {}) {
   const capabilities = []
   const actions = []
   const add = (item, recovery) => { capabilities.push(item); if (item.status !== "verified") actions.push(recovery) }
+  const environment = loadLocalEnvironment(root, options.environment)
   const markersOk = REQUIRED_MARKERS.every(marker => existsSync(join(root, marker)))
   add(capability("desktop.root", markersOk, "The physical working directory matches the receipt and contains every application-root marker.", "The receipt root is open, but one or more required application markers are missing.", { id: "desktop.repair_root", evidence: "root_markers_missing" }), action("desktop.repair_root", "repair", "Restore the missing root markers from the approved template commit, then rerun npm run verify:first-session."))
 
@@ -170,24 +171,23 @@ export async function verifyFirstSession(root = process.cwd(), options = {}) {
     ["psql", ["--version"], "desktop.tool.psql"],
   ]
   for (const [name, args, id] of tools) {
-    const result = command(name, args, { cwd: root })
+    const result = command(name, args, { cwd: root, env: environment })
     add(capability(id, result.ok, `${name} is available in this session.`, `${name} is unavailable or unhealthy in this session.`, { id: `desktop.repair_${name}`, evidence: "tool_unavailable" }, result.ok ? result.stdout : undefined), action(`desktop.repair_${name}`, "repair", `Restore ${name} on the Claude Desktop PATH, restart Desktop if PATH changed, then rerun npm run verify:first-session.`))
   }
 
-  const gitRoot = command("git", ["rev-parse", "--show-toplevel"], { cwd: root })
+  const gitRoot = command("git", ["rev-parse", "--show-toplevel"], { cwd: root, env: environment })
   let repositoryOk = false
   try { repositoryOk = gitRoot.ok && realpathSync(gitRoot.stdout.trim()) === root } catch {}
   add(capability("desktop.repository", repositoryOk, "Git identifies this exact directory as the repository root.", "Git does not identify this directory as the repository root.", { id: "desktop.reopen_root", evidence: "git_root_mismatch" }), action("desktop.reopen_root", "confirm", "Close this Code session and open the exact application root recorded in FIRST_APP_HANDOFF.md."))
 
-  const gh = command("gh", ["auth", "status"], { cwd: root })
+  const gh = command("gh", ["auth", "status"], { cwd: root, env: environment })
   add(capability("desktop.auth.github", gh.ok, "GitHub CLI authentication is valid in this Desktop-local session.", "GitHub CLI authentication was not verified in this Desktop-local session.", { id: "desktop.authenticate_github", evidence: "interactive_auth_check_failed" }), action("desktop.authenticate_github", "authenticate", "Run gh auth login yourself in the interactive macOS login session, complete its prompts, restart Desktop if needed, then rerun verification."))
 
-  const environment = loadLocalEnvironment(root, options.environment)
   const pgEnvironment = postgresEnvironment(environment)
   const database = pgEnvironment ? command("psql", ["-X", "-w", "--tuples-only", "--no-align", "--command", "SELECT 1"], { cwd: root, env: pgEnvironment }) : { ok: false }
   add(capability("desktop.database", database.ok && database.stdout.trim() === "1", "psql completed a real read-only connection to the configured application database.", pgEnvironment ? "The configured application database did not accept a read-only psql connection." : "DATABASE_URL or DIRECT_URL is missing or is not a valid PostgreSQL URL.", { id: "desktop.repair_database", evidence: pgEnvironment ? "database_connection_failed" : "database_configuration_missing" }), action("desktop.repair_database", "repair", "Configure the local PostgreSQL URL without sharing it, confirm Postgres is running, then rerun npm run verify:first-session."))
 
-  const dependencies = command("npm", ["ls", "--depth=0", "--silent"], { cwd: root, timeout: 30_000 })
+  const dependencies = command("npm", ["ls", "--depth=0", "--silent"], { cwd: root, env: environment, timeout: 30_000 })
   add(capability("desktop.dependencies", dependencies.ok, "Installed dependencies match the npm manifest and lockfile.", "Project dependencies are missing or do not match the npm manifest and lockfile.", { id: "desktop.install_dependencies", evidence: "dependencies_unready" }), action("desktop.install_dependencies", "repair", "Review the repository state, run npm ci from the exact application root, then rerun npm run verify:first-session."))
 
   let observed = { started: false, preview: false }
