@@ -56,7 +56,12 @@ EOF
 chmod +x "$test_root/bin/uname" "$test_root/bin/git" "$test_root/off-path/brew"
 
 run_preflight() {
-  script -qec "env HOME='$test_root/home' PATH='$test_root/bin:/usr/bin:/bin' VIBE_SETUP_BREW_CANDIDATES='$test_root/off-path/brew' VIBE_SETUP_PREFLIGHT_ONLY=1 /bin/bash '$setup'" /dev/null 2>&1
+  local command="env HOME='$test_root/home' PATH='$test_root/bin:/usr/bin:/bin' VIBE_SETUP_BREW_CANDIDATES='$test_root/off-path/brew' VIBE_SETUP_PREFLIGHT_ONLY=1 /bin/bash '$setup'"
+  if script --version >/dev/null 2>&1; then
+    script -qec "$command" /dev/null 2>&1
+  else
+    script -q /dev/null /bin/bash -c "$command" 2>&1
+  fi
 }
 
 preflight_output=$(run_preflight)
@@ -80,20 +85,32 @@ test "$(grep -cF '# >>> vibe-coding-setup:homebrew >>>' "$test_root/home/.zshrc"
 printf 'participant unwritable setting\n' > "$test_root/unwritable-profile"
 chmod 400 "$test_root/unwritable-profile"
 unwritable_before=$(shasum -a 256 "$test_root/unwritable-profile")
-unwritable_output=$(script -qec "env HOME='$test_root/home' PATH='$test_root/bin:/usr/bin:/bin' VIBE_SETUP_SHELL_PROFILE='$test_root/unwritable-profile' VIBE_SETUP_PREFLIGHT_ONLY=1 /bin/bash '$setup'" /dev/null 2>&1 || true)
+if script --version >/dev/null 2>&1; then
+  unwritable_output=$(script -qec "env HOME='$test_root/home' PATH='$test_root/bin:/usr/bin:/bin' VIBE_SETUP_SHELL_PROFILE='$test_root/unwritable-profile' VIBE_SETUP_PREFLIGHT_ONLY=1 /bin/bash '$setup'" /dev/null 2>&1 || true)
+else
+  unwritable_output=$(script -q /dev/null /bin/bash -c "env HOME='$test_root/home' PATH='$test_root/bin:/usr/bin:/bin' VIBE_SETUP_SHELL_PROFILE='$test_root/unwritable-profile' VIBE_SETUP_PREFLIGHT_ONLY=1 /bin/bash '$setup'" 2>&1 || true)
+fi
 grep -F 'not owned and writable by the current user' <<<"$unwritable_output" >/dev/null
 test "$(shasum -a 256 "$test_root/unwritable-profile")" = "$unwritable_before"
 
 printf 'participant differently owned setting\n' > "$test_root/wrong-owner-profile"
 sudo -n chown root:root "$test_root/wrong-owner-profile"
 wrong_owner_before=$(shasum -a 256 "$test_root/wrong-owner-profile")
-wrong_owner_output=$(script -qec "env HOME='$test_root/home' PATH='$test_root/bin:/usr/bin:/bin' VIBE_SETUP_SHELL_PROFILE='$test_root/wrong-owner-profile' VIBE_SETUP_PREFLIGHT_ONLY=1 /bin/bash '$setup'" /dev/null 2>&1 || true)
+if script --version >/dev/null 2>&1; then
+  wrong_owner_output=$(script -qec "env HOME='$test_root/home' PATH='$test_root/bin:/usr/bin:/bin' VIBE_SETUP_SHELL_PROFILE='$test_root/wrong-owner-profile' VIBE_SETUP_PREFLIGHT_ONLY=1 /bin/bash '$setup'" /dev/null 2>&1 || true)
+else
+  wrong_owner_output=$(script -q /dev/null /bin/bash -c "env HOME='$test_root/home' PATH='$test_root/bin:/usr/bin:/bin' VIBE_SETUP_SHELL_PROFILE='$test_root/wrong-owner-profile' VIBE_SETUP_PREFLIGHT_ONLY=1 /bin/bash '$setup'" 2>&1 || true)
+fi
 grep -F 'not owned and writable by the current user' <<<"$wrong_owner_output" >/dev/null
 test "$(shasum -a 256 "$test_root/wrong-owner-profile")" = "$wrong_owner_before"
 
 printf 'participant setting\n' > "$test_root/profile-target"
 ln -s "$test_root/profile-target" "$test_root/unsafe-profile"
-unsafe_output=$(script -qec "env HOME='$test_root/home' PATH='$test_root/bin:/usr/bin:/bin' VIBE_SETUP_SHELL_PROFILE='$test_root/unsafe-profile' VIBE_SETUP_PREFLIGHT_ONLY=1 /bin/bash '$setup'" /dev/null 2>&1 || true)
+if script --version >/dev/null 2>&1; then
+  unsafe_output=$(script -qec "env HOME='$test_root/home' PATH='$test_root/bin:/usr/bin:/bin' VIBE_SETUP_SHELL_PROFILE='$test_root/unsafe-profile' VIBE_SETUP_PREFLIGHT_ONLY=1 /bin/bash '$setup'" /dev/null 2>&1 || true)
+else
+  unsafe_output=$(script -q /dev/null /bin/bash -c "env HOME='$test_root/home' PATH='$test_root/bin:/usr/bin:/bin' VIBE_SETUP_SHELL_PROFILE='$test_root/unsafe-profile' VIBE_SETUP_PREFLIGHT_ONLY=1 /bin/bash '$setup'" 2>&1 || true)
+fi
 grep -F 'shell profile is a symbolic link' <<<"$unsafe_output" >/dev/null
 test "$(cat "$test_root/profile-target")" = 'participant setting'
 test ! -e "$test_root/home/.unsafe-profile-created"
