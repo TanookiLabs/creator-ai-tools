@@ -1,0 +1,135 @@
+# Project
+
+This is a Next.js app built at the Slow Ventures Creator Fund AI Hackathon. The user is likely a beginner — be helpful, explain what you're doing, and keep things simple.
+
+# Stack
+
+- **Framework**: Next.js 16 (App Router) with TypeScript and React 19
+- **Styling**: Tailwind CSS + shadcn/ui (New York style, lucide icons)
+- **Auth**: Better Auth — email/password with database sessions
+- **Database**: Prisma ORM → PostgreSQL on Neon
+- **Hosting**: Vercel (auto-deploys on git push)
+
+# Key files
+
+- `lib/auth.ts` — Better Auth server config (Prisma adapter, email/password, session settings)
+- `lib/auth-client.ts` — Better Auth client helpers (React hooks for session, sign in/out)
+- `proxy.ts` — route protection middleware (all routes require login by default)
+- `prisma/schema.prisma` — database schema (single source of truth for tables)
+- `lib/db/prisma.ts` — Prisma client singleton
+- `app/(authenticated)/dashboard/page.tsx` — protected Creator Fund dashboard and onboarding entry point
+- `components/dashboard-resource-hub.tsx` — browser-local checklist and workshop-resource hub
+- `components/ui/` — shadcn/ui components
+- `.env` — environment variables (never commit this)
+
+# Slash commands
+
+This project has custom slash commands the user may invoke. When they do, follow the instructions in the corresponding `.claude/commands/` file.
+
+| Command | What it does |
+| ------- | ------------ |
+| `/plan` | Turn an idea into requirements.md + implementation-plan.md |
+| `/build` | Execute the implementation plan step by step |
+| `/new-page` | Create a new page with navigation |
+| `/add-table` | Add a Prisma model, push schema, create server action |
+| `/add-ai` | Add an AI feature (Replicate, Vercel AI SDK) |
+| `/design` | Build or redesign UI from a description |
+| `/fix` | Debug and fix the current error |
+| `/research` | Research a topic, API, or product before building |
+| `/snapshot` | Git commit (local save point, does NOT push) |
+| `/push` | Push commits to GitHub (backup only, does NOT deploy) |
+| `/deploy` | Commit + push to GitHub + Vercel deploys automatically |
+| `/help` | Show all commands and tips |
+
+# Rules
+
+## General
+
+- The user is a beginner. Briefly explain what you're doing and why before making changes.
+- When creating something new, tell the user how to see it (e.g., "Open localhost:3000/dashboard to see your new page").
+- After making changes, suggest the logical next step or ask what to do next.
+- Commit frequently — remind the user to run /snapshot after completing a feature.
+
+## Server actions (not API routes)
+
+- Use Server Actions (`"use server"`) for all backend logic. Do not create API routes under `app/api/` (except the existing Better Auth route).
+- Server actions go in `lib/actions/` or co-located with the page that uses them.
+
+## Authentication
+
+- Use `auth.api.getSession({ headers: await headers() })` from `@/lib/auth` to get the current session in Server Components and Server Actions. Import `headers` from `next/headers`.
+- Use `authClient.useSession()` from `@/lib/auth-client` to get the session in Client Components (no provider wrapper needed).
+- The current user's ID is `session.user.id`.
+- All routes are protected by default via `proxy.ts`. New pages require login automatically.
+- To make a route public, add it to the `publicRoutes` array in `proxy.ts`.
+- Do not modify the Better Auth model field names (User, Account, Session, Verification) — Better Auth expects them exactly as defined.
+- You CAN add new fields to the User model (e.g., `bio`, `avatarUrl`). Just don't rename existing ones.
+
+## Database (Prisma)
+
+- All models are defined in `prisma/schema.prisma`. This is the single source of truth.
+- Create a reviewed migration with `npm run db:migrate:dev -- --name <change>`, commit it, and apply reviewed migrations with `npm run db:migrate`. `npm run db:push` is an explicit, disposable-prototype-only escape hatch; it is never part of a build or deployment.
+- After adding new models, run `npm run postinstall` (which runs `prisma generate`) to update the TypeScript types.
+- Use `prisma` from `lib/db/prisma.ts` for all database reads and writes.
+- When a model belongs to a user, add `userId String` with a relation to the User model and filter queries by `userId: session.user.id`.
+- Use `@@map("table_name")` on every model to set the Postgres table name (lowercase, snake_case, plural).
+- Browse data with `npm run db:studio` (opens Prisma Studio at localhost:5555).
+
+## UI and styling
+
+- Use shadcn/ui components for all UI elements. Install new ones with: `pnpm dlx shadcn@latest add <component>`
+- Available components: Button, Card, Input, Label, Checkbox, Badge, DropdownMenu. Install more as needed (Dialog, Table, Select, Tabs, Textarea, etc.).
+- Use Tailwind CSS for all styling. Never use inline styles or raw CSS.
+- Use the theme's CSS variables (e.g., `bg-background`, `text-foreground`, `bg-primary`, `text-muted-foreground`). Do not use arbitrary hex colors.
+- Use `cn()` from `lib/utils` when conditionally combining class names.
+- Use `lucide-react` for icons.
+- Keep layouts responsive — use Tailwind's responsive prefixes (`sm:`, `md:`, `lg:`).
+
+## Pages and routing
+
+- File paths are routes: `app/dashboard/page.tsx` → `/dashboard`
+- Pages inside `app/(authenticated)/` get an extra server-side auth check via the layout.
+- The `(authenticated)` folder name is a Next.js route group — it doesn't appear in the URL.
+- When creating a new page, add a navigation link so the user can reach it.
+
+## Deployment
+
+- This project uses two branches: `main` (working branch) and `production` (deploys to Vercel).
+- Pushing to `main` does NOT deploy. Pushing to `production` triggers a Vercel build.
+- To deploy: `git push origin main:production` (this pushes main's code to the production branch).
+- The build command is: `prisma generate && next build`. It must not change a database. Apply reviewed production migrations as a separate deployment step with `npm run db:migrate`.
+- Environment variables for production are managed with `npx vercel env add <NAME> production` or in Vercel → Settings → Environment Variables.
+- Production uses a separate Neon database branch (or project) from local development.
+- The /deploy slash command handles the full commit → push to main → push to production flow.
+
+## Environment variables
+
+- All secrets go in `.env` (never committed to git).
+- Required: `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `DATABASE_URL`, `DIRECT_URL`
+- `BETTER_AUTH_SECRET`, `DATABASE_URL`, and `DIRECT_URL` are server-only secrets. `BETTER_AUTH_URL` is the public canonical origin. Never expose a secret through a `NEXT_PUBLIC_` variable.
+- Optional: `REPLICATE_API_TOKEN`, `OPENAI_API_KEY`, `STRIPE_SECRET_KEY`, `RESEND_API_KEY`
+- When adding a new API integration, remind the user to add the key to both `.env` (local) and Vercel Settings (production).
+
+# Common patterns
+
+## Create a new model + page
+
+1. Add the model to `prisma/schema.prisma` (with user relation if needed)
+2. For a disposable prototype database, run `npm run db:push`; otherwise create and review a migration, then apply it with `npm run db:migrate`.
+3. Create a server action in `lib/actions/` to create/read/update/delete
+4. Create a page in `app/(authenticated)/` to display the data
+5. Add navigation link
+
+## Add an AI feature
+
+1. Install the package (`npm install replicate` or `npm install ai @ai-sdk/openai`)
+2. Add the API key to `.env`
+3. Create a server action that calls the API
+4. Build a UI with loading states and error handling
+
+## Make a page public
+
+Add the path to `publicRoutes` in `proxy.ts`:
+```typescript
+const publicRoutes = ["/", "/sign-in", "/sign-up", "/api/auth", "/your-new-public-page"]
+```
