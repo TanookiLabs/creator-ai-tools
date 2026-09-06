@@ -41,3 +41,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Generated first-app bootstrap state (local support data; never commit)
+/FIRST_APP_HANDOFF.md
+/.first-app/

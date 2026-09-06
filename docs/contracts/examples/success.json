@@ -1,0 +1,27 @@
+{
+  "contract_version": "1.0",
+  "kind": "first_app_bootstrap_receipt",
+  "run": { "id": "2f4fc92d-f3c6-4d57-b12a-b4ed1dde1d9a", "sequence": 1 },
+  "application": {
+    "root": "/Users/participant/Documents/src/my-first-app",
+    "repository": "https://github.com/TanookiLabs/creator-ai-tools",
+    "commit": "0393501676cf5f3751089699eafb5090411ff8c7",
+    "instructions": ["CLAUDE.md", "README.md", "docs/quality-verification.md"]
+  },
+  "provenance": {
+    "bootstrap": { "repository": "https://github.com/TanookiLabs/creator-ai-tools", "commit": "0393501676cf5f3751089699eafb5090411ff8c7", "version": "git:0393501676cf5f3751089699eafb5090411ff8c7", "sha256": "dfd14dce60c91f22452df0e9e2677ee0f054e2b2ca8d9bf5f471da4db0178580" },
+    "template": { "repository": "https://github.com/TanookiLabs/creator-ai-tools", "commit": "0393501676cf5f3751089699eafb5090411ff8c7", "version": "git:0393501676cf5f3751089699eafb5090411ff8c7" }
+  },
+  "capabilities": [
+    { "id": "auth.github", "status": "verified", "checked_at": "2026-09-06T12:00:02Z", "summary": "GitHub CLI reports an authenticated account in the participant session." },
+    { "id": "handoff.claude_desktop", "status": "verified", "checked_at": "2026-09-06T12:00:04Z", "summary": "Participant confirmed the exact application root in Claude Desktop." },
+    { "id": "service.postgres", "status": "verified", "checked_at": "2026-09-06T12:00:03Z", "summary": "The explicit Postgres.app client completed a local connection check.", "version": "17.0" },
+    { "id": "tool.node", "status": "verified", "checked_at": "2026-09-06T12:00:01Z", "summary": "Node is available.", "version": "22.18.0" }
+  ],
+  "participant_actions": [
+    { "id": "continue.desktop_verification", "kind": "continue", "blocking": false, "instruction": "In Claude Desktop, read CLAUDE.md and verify the project before making changes." }
+  ],
+  "result": { "status": "success", "failed_capability_ids": [] },
+  "redaction": { "applied": false, "fields": [] },
+  "timestamps": { "started_at": "2026-09-06T12:00:00Z", "finished_at": "2026-09-06T12:00:05Z" }
+}

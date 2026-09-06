@@ -54,9 +54,15 @@ export const buildGuides = [
     repositoryPath: "guides/prerequisites/vscode.md",
   },
   {
+    slug: "claude-desktop",
+    title: "Claude Desktop",
+    description: "Confirm the exact project root and recover the macOS Desktop-first handoff.",
+    repositoryPath: "guides/prerequisites/claude-desktop.md",
+  },
+  {
     slug: "claude-code",
-    title: "Claude Code",
-    description: "Install the optional coding assistant covered by the repository guide.",
+    title: "Claude CLI recovery",
+    description: "Use the normal CLI only when the primary Desktop handoff is unavailable.",
     repositoryPath: "guides/prerequisites/claude-code.md",
   },
   {
@@ -80,5 +86,5 @@ export function getBuildGuide(slug: string) {
 }
 
 export function getBuildGuideSourceUrl(guide: BuildGuide) {
-  return `https://github.com/slow-ventures/creator-ai-tools/blob/main/${guide.repositoryPath}`
+  return `https://github.com/TanookiLabs/creator-ai-tools/blob/main/${guide.repositoryPath}`
 }

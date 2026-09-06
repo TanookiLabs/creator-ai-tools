@@ -1,0 +1,28 @@
+{
+  "contract_version": "1.0",
+  "kind": "first_app_bootstrap_receipt",
+  "run": { "id": "09e1015f-6f43-4e0a-8993-e1fd85a69aeb", "sequence": 2, "rerun_of": "2f4fc92d-f3c6-4d57-b12a-b4ed1dde1d9a" },
+  "application": {
+    "root": "/Users/participant/Documents/src/my-first-app",
+    "repository": "https://github.com/TanookiLabs/creator-ai-tools",
+    "commit": "0393501676cf5f3751089699eafb5090411ff8c7",
+    "instructions": ["CLAUDE.md", "README.md", "docs/quality-verification.md"]
+  },
+  "provenance": {
+    "bootstrap": { "repository": "https://github.com/TanookiLabs/creator-ai-tools", "commit": "0393501676cf5f3751089699eafb5090411ff8c7", "version": "git:0393501676cf5f3751089699eafb5090411ff8c7", "sha256": "dfd14dce60c91f22452df0e9e2677ee0f054e2b2ca8d9bf5f471da4db0178580" },
+    "template": { "repository": "https://github.com/TanookiLabs/creator-ai-tools", "commit": "0393501676cf5f3751089699eafb5090411ff8c7", "version": "git:0393501676cf5f3751089699eafb5090411ff8c7" }
+  },
+  "capabilities": [
+    { "id": "auth.github", "status": "unverified", "checked_at": "2026-09-06T12:10:02Z", "summary": "GitHub authentication still requires a participant-session check.", "evidence_code": "interactive_check_required", "recovery_action_id": "authenticate.github" },
+    { "id": "handoff.claude_desktop", "status": "unverified", "checked_at": "2026-09-06T12:10:04Z", "summary": "The deep link was opened, but folder access was not confirmed.", "evidence_code": "folder_confirmation_pending", "recovery_action_id": "confirm.desktop_folder" },
+    { "id": "service.postgres", "status": "verified", "checked_at": "2026-09-06T12:10:03Z", "summary": "The explicit Postgres.app client completed a local connection check.", "version": "17.0" },
+    { "id": "tool.node", "status": "verified", "checked_at": "2026-09-06T12:10:01Z", "summary": "Node is available.", "version": "22.18.0" }
+  ],
+  "participant_actions": [
+    { "id": "authenticate.github", "kind": "authenticate", "blocking": true, "instruction": "Complete GitHub CLI authentication in your interactive Mac session, then rerun the check." },
+    { "id": "confirm.desktop_folder", "kind": "grant_permission", "blocking": true, "instruction": "In Claude Desktop, review and approve access to the exact application root, or open that folder manually." }
+  ],
+  "result": { "status": "partial_failure", "failed_capability_ids": ["auth.github", "handoff.claude_desktop"] },
+  "redaction": { "applied": true, "fields": ["capabilities.auth.github.raw_output"] },
+  "timestamps": { "started_at": "2026-09-06T12:10:00Z", "finished_at": "2026-09-06T12:10:05Z" }
+}
