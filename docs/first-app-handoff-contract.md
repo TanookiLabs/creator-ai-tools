@@ -72,12 +72,16 @@ Each capability requires:
 Participant actions require `id`, `kind`, `blocking`, and `instruction`.
 `kind` is `authenticate`, `grant_permission`, `confirm`, `repair`, `retry`, or
 `continue`. Instructions must not embed secret values or tell an agent to bypass
-permissions. `blocking: true` means overall success cannot yet be claimed.
+permissions. `blocking: true` means overall success cannot yet be claimed. The
+Desktop folder-selection action is non-blocking when the installer cannot
+observe that selection reliably: a deep link or participant response is not
+proof that the exact folder was selected.
 
 `result.status` is derived, not caller-selected:
 
 - `success`: every release-required capability is `verified` and there are no
-  blocking participant actions.
+  blocking participant actions. An optional, explicitly unverified Desktop
+  folder-selection handoff does not change installation success.
 - `partial_failure`: an application root and valid provenance exist, but at
   least one required capability is not verified or a blocking action remains.
 - `failed`: no safe, verified application root/provenance handoff can be made.

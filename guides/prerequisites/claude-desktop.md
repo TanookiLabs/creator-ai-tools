@@ -1,9 +1,9 @@
 # Claude Desktop: first handoff and recovery
 
 Claude Desktop Code is the primary interface for this macOS onboarding release.
-The bootstrap finishes the pinned template checkout before Desktop opens the
-project. Your project remains on disk if Desktop, its deep link, or a
-confirmation step fails.
+The bootstrap finishes the pinned template checkout before Desktop opens. Your
+project remains on disk if Desktop is unavailable or folder selection is not
+completed.
 
 Gatekeeper approval, Desktop sign-in and Code eligibility, exact-folder
 confirmation, GitHub Keychain access, and visual preview confirmation remain
@@ -16,9 +16,9 @@ Find the absolute path printed after `Project root verified` and recorded as
 `Exact application root` in `FIRST_APP_HANDOFF.md`. In Claude Desktop:
 
 1. Sign in with your own account and select **Code**.
-2. Review the folder confirmation opened by the bootstrap.
+2. Choose **Open folder** and select the exact verified path.
 3. Confirm only when its complete path exactly matches the verified path.
-4. Send: `Read CLAUDE.md and FIRST_APP_HANDOFF.md, confirm this is the receipt's exact application root, then verify and start the app.`
+4. Send: `Open /absolute/path/printed/as/Project root verified, read CLAUDE.md, and help me start the app.`
 
 The directory must contain `package.json`, `package-lock.json`,
 `next.config.ts`, `app/`, `prisma/schema.prisma`, `CLAUDE.md`, and
@@ -45,12 +45,13 @@ recovery step in `.first-app/receipt.json` and `FIRST_APP_HANDOFF.md`. Complete
 that step yourself and rerun the same command. A Terminal-only run is useful for
 diagnosis but is not evidence that the Desktop Code environment is ready.
 
-## Deep link canceled, ignored, or pointed at the wrong folder
+## Folder selection is pending or pointed at the wrong folder
 
-No checkout recovery is necessary. In Claude Desktop, select **Code**, choose
-**Open folder**, and select the exact verified application root. If another
-folder is open, close that Code session and open a new one at the verified
-root. Recheck the markers above before sending the first prompt.
+No checkout recovery is necessary. The installer does not claim that a Desktop
+deep link or a yes/no response selected the folder. In Claude Desktop, select
+**Code**, choose **Open folder**, and select the exact verified application
+root. If another folder is open, close that Code session and open a new one at
+the verified root. Recheck the markers above before sending the first prompt.
 
 If setup changed shell or PATH configuration while Desktop was open, quit
 Claude normally and reopen it before verifying tools. Do not grant access to a

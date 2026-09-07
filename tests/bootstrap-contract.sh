@@ -37,6 +37,7 @@ GITHUB_VERIFIED=true
 GITHUB_AUTH_EVIDENCE=interactive_status_verified
 POSTGRES_VERIFIED=true
 DESKTOP_VERIFIED=false
+GUI_LOGIN_SHELL_VERIFIED=true
 
 # The GitHub version fixture resembles a token. It must be replaced before
 # disk and terminal output, while participant authentication stays untouched.
@@ -59,7 +60,9 @@ test -f "$handoff"
 grep -F '"contract_version": "1.0"' "$receipt" >/dev/null
 grep -F "\"root\": \"$PROJECT_ROOT\"" "$receipt" >/dev/null
 grep -F "\"commit\": \"$TEMPLATE_COMMIT\"" "$receipt" >/dev/null
-grep -F '"status": "partial_failure"' "$receipt" >/dev/null
+grep -F '"status": "success"' "$receipt" >/dev/null
+grep -F '"blocking": false' "$receipt" >/dev/null
+grep -F '"evidence_code": "folder_selection_unverified"' "$receipt" >/dev/null
 grep -F '"applied": true' "$receipt" >/dev/null
 grep -F '[REDACTED]' "$receipt" >/dev/null
 grep -F '<!-- generated; local-only; contract 1.0 -->' "$handoff" >/dev/null
@@ -67,16 +70,16 @@ grep -F '## Next action' "$handoff" >/dev/null
 grep -F '## Run result' "$handoff" >/dev/null
 ! grep -F 'ghp_fixture_secret_value' <<<"$first_output$(cat "$receipt")$(cat "$handoff")" >/dev/null
 
-# Reruns replace current files, increment sequence, retain one distinct prior
-# partial result, and keep stable observed fields semantically identical.
+# Successful reruns replace current files, increment sequence, retain no
+# diagnostic failure, and keep stable observed fields semantically identical.
 first_semantic=$(node -e 'const r=require(process.argv[1]); delete r.run; delete r.timestamps; for(const c of r.capabilities) delete c.checked_at; console.log(JSON.stringify(r))' "$receipt")
 produce_first_app_contract >/dev/null
 second_semantic=$(node -e 'const r=require(process.argv[1]); delete r.run; delete r.timestamps; for(const c of r.capabilities) delete c.checked_at; console.log(JSON.stringify(r))' "$receipt")
 test "$first_semantic" = "$second_semantic"
 test "$(node -p "require('$receipt').run.sequence")" -eq 2
-test "$(find "$project/.first-app/diagnostics" -type f -name '*.json' | wc -l)" -eq 1
+test "$(find "$project/.first-app/diagnostics" -type f -name '*.json' | wc -l)" -eq 0
 produce_first_app_contract >/dev/null
-test "$(find "$project/.first-app/diagnostics" -type f -name '*.json' | wc -l)" -eq 1
+test "$(find "$project/.first-app/diagnostics" -type f -name '*.json' | wc -l)" -eq 0
 
 # An interrupted atomic replacement cannot corrupt the prior receipt. A stale
 # temporary file is local to the fixture and is never interpreted as current.
@@ -97,6 +100,15 @@ grep -F '"evidence_code": "gui_context_required"' "$receipt" >/dev/null
 grep -F 'not authoritative for the participant' "$receipt" >/dev/null
 grep -F 'Do not reauthenticate because of an SSH or background check alone.' "$receipt" >/dev/null
 ! grep -Ei 'SSH_CONNECTION|SSH_CLIENT|SSH_TTY|keychain[^.]*:' "$receipt" "$handoff" >/dev/null
+
+# A missing fresh GUI login-shell check is a real required recovery, while an
+# unverified Desktop folder alone remains a truthful non-blocking handoff.
+GITHUB_VERIFIED=true
+GITHUB_AUTH_EVIDENCE=interactive_status_verified
+GUI_LOGIN_SHELL_VERIFIED=false
+produce_first_app_contract >/dev/null
+grep -F '"status": "partial_failure"' "$receipt" >/dev/null
+grep -F '"id": "verify.gui_login_shell"' "$receipt" >/dev/null
 
 # Reject unsafe roots and provenance before writing any generated state.
 wrong_commit="$TEMPLATE_COMMIT"

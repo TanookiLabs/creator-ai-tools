@@ -64,7 +64,8 @@ NODE
 grep -F 'Terminal-only' "$desktop_guide" >/dev/null
 grep -F 'Gatekeeper' "$desktop_guide" >/dev/null
 grep -F 'Sign in with your own account' "$desktop_guide" >/dev/null
-grep -F 'folder confirmation' "$desktop_guide" >/dev/null
+grep -F 'Open folder' "$desktop_guide" >/dev/null
+grep -F 'does not claim' "$desktop_guide" >/dev/null
 grep -F 'Keychain' "$desktop_guide" >/dev/null
 grep -F 'participant' "$desktop_guide" >/dev/null
 grep -F 'manual' "$desktop_guide" >/dev/null

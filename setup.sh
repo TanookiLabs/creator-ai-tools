@@ -163,9 +163,9 @@ github_auth_context_is_authoritative() {
 
 show_github_auth_recovery() {
   info "Open Terminal from your macOS desktop."
-  info "Run this command yourself: gh auth login --web --git-protocol https"
+  info "The setup can start the browser sign-in only from that Terminal."
   info "Complete the GitHub browser and Keychain prompts yourself."
-  info "Then return here and select the retry option."
+  info "Then select the retry option if GitHub is still not verified."
 }
 
 # Postgres.app owns its client binaries inside the application bundle. Use that
@@ -249,6 +249,7 @@ produce_first_app_contract() {
   RECEIPT_GITHUB_EVIDENCE="${GITHUB_AUTH_EVIDENCE:-interactive_check_required}" \
   RECEIPT_POSTGRES_STATUS="${POSTGRES_VERIFIED:-false}" \
   RECEIPT_DESKTOP_STATUS="${DESKTOP_VERIFIED:-false}" \
+  RECEIPT_GUI_LOGIN_SHELL_STATUS="${GUI_LOGIN_SHELL_VERIFIED:-false}" \
   node <<'FIRST_APP_CONTRACT_JS'
 const fs = require("node:fs");
 const path = require("node:path");
@@ -314,22 +315,24 @@ const runId = crypto.randomUUID();
 const sequence = Number.isInteger(previous?.run?.sequence) ? previous.run.sequence + 1 : 1;
 const run = { id: runId, sequence };
 if (previous?.run?.id) run.rerun_of = previous.run.id;
-const actions = [
-  { id: "confirm.desktop_folder", kind: "grant_permission", blocking: true, instruction: "In Claude Desktop, review and approve access to the exact application root, or open that folder manually." },
-];
+const actions = [];
 const githubEvidence = ["interactive_status_verified", "interactive_status_failed", "gui_context_required"].includes(env.RECEIPT_GITHUB_EVIDENCE) ? env.RECEIPT_GITHUB_EVIDENCE : "interactive_check_required";
 if (env.RECEIPT_GITHUB_STATUS !== "true") actions.push({ id: "authenticate.github", kind: "authenticate", blocking: true, instruction: githubEvidence === "gui_context_required" ? "Open Terminal from your macOS desktop and rerun setup so GitHub CLI can use your GUI login Keychain. Do not reauthenticate because of an SSH or background check alone." : "In your interactive Mac terminal, run gh auth login --web --git-protocol https yourself, complete the browser and Keychain prompts, then rerun setup." });
 if (env.RECEIPT_POSTGRES_STATUS !== "true") actions.push({ id: "repair.postgres", kind: "repair", blocking: true, instruction: "Open and initialize Postgres.app, confirm its server is running, then rerun the setup." });
+if (env.RECEIPT_GUI_LOGIN_SHELL_STATUS !== "true") actions.push({ id: "verify.gui_login_shell", kind: "retry", blocking: true, instruction: "Open a new Terminal window from the macOS desktop, confirm mise, node, npm, ruby, and claude are available, then rerun setup." });
+if (env.RECEIPT_DESKTOP_STATUS !== "true") actions.push({ id: "confirm.desktop_folder", kind: "confirm", blocking: false, instruction: "In Claude Desktop Code, open the exact application root manually. Folder selection is not verified by this installer." });
 const capabilities = [
   capability("auth.github", env.RECEIPT_GITHUB_STATUS === "true", env.RECEIPT_GITHUB_STATUS === "true" ? "GitHub CLI authentication was verified in the participant's interactive GUI login context." : githubEvidence === "gui_context_required" ? "This SSH or background result is not authoritative for the participant's GUI Keychain." : "GitHub CLI authentication was not verified in the participant's interactive GUI login context.", env.RECEIPT_GH_VERSION, { id: "authenticate.github", evidence: githubEvidence }),
-  capability("handoff.claude_desktop", env.RECEIPT_DESKTOP_STATUS === "true", env.RECEIPT_DESKTOP_STATUS === "true" ? "Participant confirmed the exact application root in Claude Desktop." : "Claude Desktop folder access has not been confirmed by the participant.", undefined, { id: "confirm.desktop_folder", evidence: "folder_confirmation_pending" }),
+  capability("handoff.claude_desktop", env.RECEIPT_DESKTOP_STATUS === "true", env.RECEIPT_DESKTOP_STATUS === "true" ? "The exact application root was verified by a reliable Desktop mechanism." : "Claude Desktop folder selection is not observable by this installer and remains unverified.", undefined, { id: "confirm.desktop_folder", evidence: "folder_selection_unverified" }),
   capability("service.postgres", env.RECEIPT_POSTGRES_STATUS === "true", env.RECEIPT_POSTGRES_STATUS === "true" ? "The Postgres client completed a local connection check." : "A local PostgreSQL connection was not verified.", env.RECEIPT_PSQL_VERSION, { id: "repair.postgres", evidence: "connection_check_failed" }),
   capability("tool.git", true, "Git is available.", env.RECEIPT_GIT_VERSION),
   capability("tool.node", true, "Node.js is available.", env.RECEIPT_NODE_VERSION),
   capability("tool.npm", true, "npm is available.", env.RECEIPT_NPM_VERSION),
+  capability("tool.gui_login_shell", env.RECEIPT_GUI_LOGIN_SHELL_STATUS === "true", env.RECEIPT_GUI_LOGIN_SHELL_STATUS === "true" ? "A fresh macOS GUI login shell resolved mise, node, npm, ruby, and claude." : "A fresh macOS GUI login shell did not verify all required development tools.", undefined, { id: "verify.gui_login_shell", evidence: "gui_login_shell_unverified" }),
 ].sort((a, b) => a.id.localeCompare(b.id));
 actions.sort((a, b) => a.id.localeCompare(b.id));
-const failed = capabilities.filter(item => item.status !== "verified").map(item => item.id).sort();
+const requiredCapabilityIds = new Set(["auth.github", "service.postgres", "tool.git", "tool.gui_login_shell", "tool.node", "tool.npm"]);
+const failed = capabilities.filter(item => requiredCapabilityIds.has(item.id) && item.status !== "verified").map(item => item.id).sort();
 const finished = now();
 const receipt = {
   contract_version: env.RECEIPT_CONTRACT_VERSION,
@@ -383,7 +386,6 @@ function atomicWrite(target, content) {
 }
 atomicWrite(receiptPath, serialized);
 atomicWrite(handoffPath, markdown);
-process.stdout.write(markdown);
 FIRST_APP_CONTRACT_JS
 }
 
@@ -513,6 +515,40 @@ spin() {
   local title="$1"
   shift
   gum spin --spinner dot --spinner.foreground 99 --title "  $title" -- "$@"
+}
+
+# Homebrew can ask the participant to confirm an installation. Do not conceal
+# that prompt behind a spinner or discard the tool's own error output.
+brew_install_visible() {
+  local description="$1" status
+  shift
+  info "Homebrew installs ${description}. Review and answer any Homebrew prompt in this terminal."
+  if brew install "$@"; then
+    return 0
+  fi
+  status=$?
+  fail "Homebrew could not install ${description}."
+  info "Retry this phase from a macOS Terminal with:"
+  printf '  brew install'
+  printf ' %q' "$@"
+  printf '\n'
+  report_context "$status"
+  exit "$status"
+}
+
+verify_gui_login_shell() {
+  GUI_LOGIN_SHELL_VERIFIED=false
+  if ! github_auth_context_is_authoritative; then
+    warn "A fresh GUI login-shell check requires Terminal from the macOS desktop."
+    return
+  fi
+  if /bin/zsh -lic 'for tool in mise node npm ruby claude; do command -v "$tool" >/dev/null || exit 1; done' >/dev/null 2>&1; then
+    GUI_LOGIN_SHELL_VERIFIED=true
+    ok "A fresh GUI login shell resolves mise, Node.js, npm, Ruby, and Claude"
+  else
+    warn "A fresh GUI login shell could not resolve every required development tool."
+    info "Open a new Terminal window from the macOS desktop, then rerun setup."
+  fi
 }
 
 # ── Confetti animation ─────────────────────────────────────────
@@ -649,7 +685,12 @@ fi
 
 if ! command -v gum &>/dev/null; then
   echo "  The script installs the interface toolkit..."
-  brew install gum &>/dev/null
+  if ! brew install gum; then
+    pre_fail "Homebrew could not install the interface toolkit."
+    echo "  Retry this phase from a macOS Terminal with: brew install gum"
+    report_context 1
+    exit 1
+  fi
 fi
 
 if ! command -v gum &>/dev/null; then
@@ -719,7 +760,7 @@ header "Git & build libraries"
 if [[ "$GIT_STATE" == "healthy" ]]; then
   ok "Git installed ($(git --version | sed 's/git version //'))"
 else
-  spin "The script installs Git..." brew install git
+  brew_install_visible "Git" git
   if git --version &>/dev/null; then
     ok "Git installed"
   else
@@ -729,7 +770,7 @@ else
 fi
 
 info "The script installs the libraries that Ruby and other tools need."
-spin "The script installs the build libraries..." brew install libyaml gmp openssl@3 readline
+brew_install_visible "the build libraries" libyaml gmp openssl@3 readline
 ok "Build libraries installed"
 
 # ═════════════════════════════════════════════════════════════════
@@ -744,7 +785,7 @@ echo ""
 if command -v mise &>/dev/null; then
   ok "mise installed ($(mise --version 2>/dev/null | head -1))"
 else
-  spin "The script installs mise..." brew install mise
+  brew_install_visible "mise" mise
   if command -v mise &>/dev/null; then
     ok "mise installed"
   else
@@ -800,10 +841,7 @@ if [[ "$POSTGRES_APP_STATE" == "healthy" ]]; then
   ok "Postgres.app found"
 else
   if confirm "Install Postgres.app?"; then
-    if ! spin "The script installs Postgres.app..." brew install --cask postgres-app; then
-      warn "Homebrew could not install Postgres.app."
-      info "Download it from https://postgresapp.com, then run this setup again."
-    fi
+    brew_install_visible "Postgres.app" --cask postgres-app
   else
     warn "Postgres.app installation was skipped."
   fi
@@ -872,7 +910,7 @@ echo ""
 if [[ "$GH_STATE" == "healthy" ]]; then
   ok "GitHub CLI installed"
 else
-  spin "The script installs the GitHub CLI..." brew install gh
+  brew_install_visible "the GitHub CLI" gh
   if gh --version &>/dev/null; then
     ok "GitHub CLI installed"
   else
@@ -897,11 +935,33 @@ else
   else
     GITHUB_AUTH_EVIDENCE="interactive_status_failed"
     warn "GitHub CLI authentication is not available in this GUI login session."
-    show_github_auth_recovery
+    info "The setup opens the standard GitHub browser sign-in now."
+    if gh auth login --web --git-protocol https; then
+      if gh auth status &>/dev/null 2>&1; then
+        GITHUB_VERIFIED=true
+        GITHUB_AUTH_EVIDENCE="interactive_status_verified"
+        ok "You are logged in to GitHub"
+      else
+        warn "GitHub sign-in finished, but GitHub CLI authentication is still not verified."
+      fi
+    else
+      warn "GitHub browser sign-in was canceled or did not complete."
+    fi
+    if [[ "$GITHUB_VERIFIED" != "true" ]]; then
+      show_github_auth_recovery
+    fi
     while true; do
-      GITHUB_AUTH_ACTION=$(gum choose "Retry after I complete authentication" "Continue with GitHub unverified" "Stop setup")
+      [[ "$GITHUB_VERIFIED" == "true" ]] && break
+      GITHUB_AUTH_ACTION=$(gum choose "Retry GitHub browser sign-in" "Continue with GitHub unverified" "Stop setup")
       case "$GITHUB_AUTH_ACTION" in
-        "Retry after I complete authentication")
+        "Retry GitHub browser sign-in")
+          if ! github_auth_context_is_authoritative; then
+            warn "GitHub browser sign-in can only start from Terminal on the macOS desktop."
+            break
+          fi
+          if ! gh auth login --web --git-protocol https; then
+            warn "GitHub browser sign-in was canceled or did not complete."
+          fi
           if gh auth status &>/dev/null 2>&1; then
             GITHUB_VERIFIED=true
             GITHUB_AUTH_EVIDENCE="interactive_status_verified"
@@ -1012,7 +1072,7 @@ if [[ "$DESKTOP_STATE" == "healthy" ]]; then
   DESKTOP_AVAILABLE=true
 else
   if confirm "Install the Claude desktop app?"; then
-    spin "The script installs the Claude desktop app..." brew install --cask claude || true
+    brew_install_visible "the Claude desktop app" --cask claude
     if [[ -x "/Applications/Claude.app/Contents/MacOS/Claude" ]]; then
       ok "Claude desktop app installed and launchable"
       DESKTOP_AVAILABLE=true
@@ -1025,21 +1085,11 @@ else
   fi
 fi
 
-desktop_deep_link() {
+show_claude_desktop_handoff() {
   local root="$1"
-  local prompt="Read CLAUDE.md and FIRST_APP_HANDOFF.md, then help me start this app."
-  node -e 'const p=new URLSearchParams({q:process.argv[2],folder:process.argv[1]}); process.stdout.write(`claude://code/new?${p}`)' "$root" "$prompt"
-}
-
-show_claude_recovery() {
-  local root="$1"
-  warn "Claude Desktop did not confirm the handoff. Your project is safe at: $root"
-  info "Manual Desktop: Open Claude Desktop. Select Code. Choose this exact folder:"
+  info "In Claude Desktop, open Code and choose this exact project folder:"
   info "$root"
-  info "Then send: Read CLAUDE.md and FIRST_APP_HANDOFF.md, then help me start this app."
-  info "Normal terminal recovery:"
-  echo "  cd $(printf '%q' "$root")"
-  echo "  claude"
+  info "The installer cannot verify that Claude Desktop selected this folder."
 }
 
 # ═════════════════════════════════════════════════════════════════
@@ -1171,6 +1221,20 @@ checkout_template() {
   rm -f "$root/.git/vibe-template-checkout"
 }
 
+ensure_participant_branch() {
+  local root="$1" branch
+  branch=$(git -C "$root" symbolic-ref --quiet --short HEAD 2>/dev/null || true)
+  if [[ -z "$branch" ]]; then
+    if git -C "$root" show-ref --verify --quiet refs/heads/participant-work; then
+      git -C "$root" checkout --quiet participant-work
+    else
+      git -C "$root" checkout --quiet -b participant-work
+    fi
+  fi
+  branch=$(git -C "$root" symbolic-ref --quiet --short HEAD)
+  printf '%s' "$branch"
+}
+
 SRC_DIR="${VIBE_SETUP_SOURCE_DIR:-$DEFAULT_SRC_DIR}"
 
 ACTIVE_PHASE="release provenance verification"
@@ -1246,13 +1310,14 @@ done
 ok "Source folder confirmed: $SRC_DIR"
 ok "Project root verified: $PROJECT_ROOT"
 ok "Template commit verified: $TEMPLATE_COMMIT"
+PARTICIPANT_BRANCH=$(ensure_participant_branch "$PROJECT_ROOT")
+ok "Development branch ready: $PARTICIPANT_BRANCH"
 
 if [[ "${VIBE_SETUP_DESTINATION_ONLY:-0}" == "1" ]]; then
   exit 0
 fi
 
-# Create the local instructions before Claude is asked to read them. The
-# producer runs again after the attempt so the receipt records confirmation.
+# Create the local diagnostic artifacts before the concise participant handoff.
 HANDOFF_FILE="$PROJECT_ROOT/FIRST_APP_HANDOFF.md"
 produce_first_app_contract >/dev/null
 
@@ -1274,38 +1339,19 @@ if [[ "$DESKTOP_AVAILABLE" == "true" ]]; then
   info "Sign in to Claude Desktop with your own account."
   info "Claude Code access depends on your account, plan, and organization policy."
   info "You control sign-in, folder approval, and all normal permission prompts."
-  if confirm "Is the Code interface available in Claude Desktop?"; then
-    if confirm "Open the exact project root in Claude Desktop now?"; then
-      CLAUDE_DEEP_LINK=$(desktop_deep_link "$PROJECT_ROOT")
-      if open "$CLAUDE_DEEP_LINK" >/dev/null 2>&1; then
-        info "Claude Desktop will ask you to confirm this exact folder: $PROJECT_ROOT"
-        info "Review the folder and the short prompt. Send it only when you are ready."
-        if confirm "Did you approve the exact folder and send the prompt?"; then
-          DESKTOP_VERIFIED=true
-          ok "Claude Desktop handoff confirmed for: $PROJECT_ROOT"
-        else
-          show_claude_recovery "$PROJECT_ROOT"
-        fi
-      else
-        show_claude_recovery "$PROJECT_ROOT"
-      fi
-    else
-      show_claude_recovery "$PROJECT_ROOT"
-    fi
-  else
-    warn "This account does not currently show Code, or you chose not to continue."
-    info "Check your Claude plan or organization policy. You can use the normal CLI recovery."
-    show_claude_recovery "$PROJECT_ROOT"
-  fi
+  show_claude_desktop_handoff "$PROJECT_ROOT"
 else
-  show_claude_recovery "$PROJECT_ROOT"
+  warn "Claude Desktop is unavailable. Your project is still ready for development."
+  show_claude_desktop_handoff "$PROJECT_ROOT"
 fi
 
 # ═════════════════════════════════════════════════════════════════
 # Step 8: Summary and Claude handoff
 # ═════════════════════════════════════════════════════════════════
 
-if [[ "$POSTGRES_VERIFIED" == "true" && "$GITHUB_VERIFIED" == "true" && "$DESKTOP_VERIFIED" == "true" && -n "${GIT_NAME:-}" && -n "${GIT_EMAIL:-}" ]]; then
+verify_gui_login_shell
+
+if [[ "$POSTGRES_VERIFIED" == "true" && "$GITHUB_VERIFIED" == "true" && "$GUI_LOGIN_SHELL_VERIFIED" == "true" && -n "${GIT_NAME:-}" && -n "${GIT_EMAIL:-}" ]]; then
   SETUP_READY=true
   SUMMARY_TITLE="Your Mac is ready."
   header "Setup complete!"
@@ -1329,19 +1375,17 @@ gum style \
   "$(gum style --foreground 76 "  $([[ "$GITHUB_VERIFIED" == "true" ]] && printf '✓' || printf '!')") GitHub authentication: $([[ "$GITHUB_VERIFIED" == "true" ]] && printf 'verified in GUI context' || printf 'participant action required')" \
   "$(gum style --foreground 76 "  $([[ -n "${GIT_NAME:-}" && -n "${GIT_EMAIL:-}" ]] && printf '✓' || printf '!')") Git identity: $([[ -n "${GIT_NAME:-}" && -n "${GIT_EMAIL:-}" ]] && printf 'configured' || printf 'participant action required')" \
   "$(gum style --foreground 76 "  ✓") Claude Code installed" \
-  "$(gum style --foreground 76 "  $([[ "$DESKTOP_VERIFIED" == "true" ]] && printf '✓' || printf '!')") Claude Desktop handoff: $([[ "$DESKTOP_VERIFIED" == "true" ]] && printf 'confirmed' || printf 'manual action available')" \
-  "$(gum style --foreground 76 "  ✓") Project root: $PROJECT_ROOT"
+  "$(gum style --foreground 76 "  !") Claude Desktop folder: select it manually in Code" \
+  "$(gum style --foreground 76 "  ✓") Project root: $PROJECT_ROOT" \
+  "$(gum style --foreground 76 "  ✓") Development branch: $PARTICIPANT_BRANCH"
 
 # ── Generate the versioned receipt and its Markdown projection ───────────────
 
-produce_first_app_contract
+produce_first_app_contract >/dev/null
 
 # ── Show handoff instructions ──────────────────────────────────
 
-if confirm "Copy the redacted handoff to the clipboard?"; then
-  pbcopy < "$HANDOFF_FILE" 2>/dev/null || true
-  info "The redacted handoff is on your clipboard."
-fi
+STARTER_PROMPT="Open $PROJECT_ROOT, read CLAUDE.md, and help me start the app."
 
 echo ""
 gum style \
@@ -1350,22 +1394,21 @@ gum style \
   --padding "1 3" \
   --margin "0 2" \
   --bold \
-  "Next: Claude builds your first app with you"
+  "Next: open your project in Claude Desktop Code"
 
 echo ""
-info "They are also in the file: $(gum style --bold "$HANDOFF_FILE")"
-info "The redacted receipt is in: $(gum style --bold "$PROJECT_ROOT/.first-app/receipt.json")"
-echo ""
-info "If you need the normal CLI recovery, open a new terminal window."
-info "Run these two commands from the exact project root:"
-echo ""
+info "Project folder:"
 gum style --foreground 255 --background 237 --padding "1 2" --margin "0 4" \
-  "cd $(printf '%q' "$PROJECT_ROOT")" \
-  "claude"
-echo ""
-info "At the first start, Claude asks you to log in with your Claude account."
-info "When Claude is ready, paste the instructions (Cmd+V). Press Enter."
-info "Claude then builds your first app with you."
+  "$PROJECT_ROOT"
+info "In Claude Desktop, open Code and select that exact folder."
+info "Starter prompt:"
+gum style --foreground 255 --background 237 --padding "1 2" --margin "0 4" "$STARTER_PROMPT"
+if confirm "Copy this starter prompt to the clipboard?"; then
+  printf '%s' "$STARTER_PROMPT" | pbcopy 2>/dev/null || true
+  info "The starter prompt is on your clipboard."
+fi
+info "Diagnostics remain local at: $PROJECT_ROOT/.first-app/receipt.json"
+info "If a tool needs repair, open a new Terminal window from the macOS desktop and rerun this setup."
 echo ""
 
 gum style \

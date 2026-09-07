@@ -38,6 +38,8 @@ checkout_template "$root" absent
 test "$(destination_state "$root")" = complete
 test "$(git -C "$root" rev-parse HEAD)" = "$TEMPLATE_COMMIT"
 template_markers_are_valid "$root"
+test "$(ensure_participant_branch "$root")" = participant-work
+test "$(git -C "$root" symbolic-ref --short HEAD)" = participant-work
 
 # An unrelated nonempty destination is classified without changing its data.
 unrelated="$test_root/Documents/src/existing"
