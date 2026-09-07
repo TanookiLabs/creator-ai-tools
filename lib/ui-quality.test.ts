@@ -12,6 +12,8 @@ const dashboard = source("app/(authenticated)/dashboard/page.tsx")
 const profile = source("app/(authenticated)/profile/page.tsx")
 const guides = source("app/(authenticated)/resources/page.tsx")
 const guideDetail = source("app/(authenticated)/resources/setup/[guide]/page.tsx")
+const signIn = source("app/sign-in/page.tsx")
+const signUp = source("app/sign-up/page.tsx")
 
 test("authenticated navigation exposes the complete participant journey", () => {
   for (const destination of ["/dashboard", "/profile", "/resources"]) {
@@ -67,4 +69,12 @@ test("authenticated errors and unknown pages provide keyboard-operable recovery"
   assert.match(error, /role="alert"/)
   assert.match(error, /onClick={reset}/)
   assert.match(notFound, /href="\/dashboard"/)
+})
+
+test("auth credentials never use a query-string form submission", () => {
+  for (const form of [signIn, signUp]) {
+    assert.match(form, /<form method="post" onSubmit={handleSubmit}/)
+    assert.match(form, /e\.preventDefault\(\)/)
+    assert.doesNotMatch(form, /method="get"/)
+  }
 })
