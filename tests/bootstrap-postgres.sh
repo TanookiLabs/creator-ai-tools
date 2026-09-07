@@ -11,6 +11,7 @@ sed -n '/^# Postgres.app owns its client binaries/,/^# Keep the receipt implemen
 source "$test_root/functions.sh"
 warn() { printf '%s\n' "$*"; }
 info() { printf '%s\n' "$*"; }
+ok() { printf '%s\n' "$*"; }
 
 POSTGRES_APP_PATH="$test_root/Postgres.app"
 mkdir -p "$POSTGRES_APP_PATH/Contents/Versions/17/bin"
@@ -41,9 +42,11 @@ fi
 export PSQL_EXIT=1 PSQL_RESULT=1
 POSTGRES_WAIT_SECONDS=2
 POSTGRES_WAIT_INTERVAL=1
+POSTGRES_REMINDER_SECONDS=1
 wait_output=$(wait_for_postgres_connection 2>&1 || true)
 grep -F 'Waiting for a database connection: 0/2 seconds' <<<"$wait_output" >/dev/null
 grep -F 'Waiting for a database connection: 1/2 seconds' <<<"$wait_output" >/dev/null
+test "$(grep -cF 'If Postgres.app shows Initialize, click it' <<<"$wait_output")" -ge 2
 
 recovery=$(show_postgres_recovery)
 grep -F 'Command-Space' <<<"$recovery" >/dev/null
@@ -51,9 +54,34 @@ grep -F 'Finder' <<<"$recovery" >/dev/null
 grep -F 'Gatekeeper' <<<"$recovery" >/dev/null
 grep -F 'Initialize' <<<"$recovery" >/dev/null
 
-grep -F '"Retry the bounded check"' "$setup" >/dev/null
-grep -F '"Continue without database readiness"' "$setup" >/dev/null
+guidance=$(show_postgres_initialize_guidance)
+grep -F 'Postgres.app is opening.' <<<"$guidance" >/dev/null
+grep -F '1. Click Initialize.' <<<"$guidance" >/dev/null
+grep -F '2. Approve any macOS permission prompt.' <<<"$guidance" >/dev/null
+grep -F '3. Leave Postgres.app running.' <<<"$guidance" >/dev/null
+grep -F 'Setup will continue automatically when the database is ready.' <<<"$guidance" >/dev/null
+
+OPEN_ARGS_FILE="$test_root/open-args"
+open() { printf '%s\n' "$*" >> "$OPEN_ARGS_FILE"; return "${OPEN_EXIT:-0}"; }
+POSTGRES_APP_PATH="$test_root/Postgres.app"
+activate_postgres_app
+grep -F -- '-a Postgres' "$OPEN_ARGS_FILE" >/dev/null
+: > "$OPEN_ARGS_FILE"
+OPEN_EXIT=1
+if fallback=$(activate_postgres_app); then :; fi
+grep -F 'could not be brought to the foreground' <<<"$fallback" >/dev/null
+grep -F 'Applications or Spotlight' <<<"$fallback" >/dev/null
+test "$(wc -l < "$OPEN_ARGS_FILE" | tr -d ' ')" -eq 2
+unset OPEN_EXIT
+
+grep -F '"Open Postgres.app again and retry"' "$setup" >/dev/null
+grep -F '"Retry the database connection check"' "$setup" >/dev/null
 grep -F '"Stop setup"' "$setup" >/dev/null
+postgres_phase=$(sed -n '/^header "Postgres.app"/,/^# Step 4/p' "$setup")
+if grep -nE 'Continue without database readiness|Retry the bounded check|initdb|osascript' <<<"$postgres_phase"; then
+  echo "Postgres initialization or timeout handling exceeds the safe workflow." >&2
+  exit 1
+fi
 if grep -nE 'psql .*password|PGPASSWORD|DATABASE_URL' "$setup"; then
   echo "Credential-bearing database invocation is present." >&2
   exit 1

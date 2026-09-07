@@ -183,9 +183,11 @@ show_github_auth_recovery() {
 POSTGRES_APP_PATH="${VIBE_SETUP_POSTGRES_APP_PATH:-/Applications/Postgres.app}"
 POSTGRES_WAIT_SECONDS="${VIBE_SETUP_POSTGRES_WAIT_SECONDS:-120}"
 POSTGRES_WAIT_INTERVAL="${VIBE_SETUP_POSTGRES_WAIT_INTERVAL:-5}"
+POSTGRES_REMINDER_SECONDS="${VIBE_SETUP_POSTGRES_REMINDER_SECONDS:-20}"
 PSQL_BIN=""
 if [[ ! "$POSTGRES_WAIT_SECONDS" =~ ^[1-9][0-9]*$ ]]; then POSTGRES_WAIT_SECONDS=120; fi
 if [[ ! "$POSTGRES_WAIT_INTERVAL" =~ ^[1-9][0-9]*$ ]]; then POSTGRES_WAIT_INTERVAL=5; fi
+if [[ ! "$POSTGRES_REMINDER_SECONDS" =~ ^[1-9][0-9]*$ ]]; then POSTGRES_REMINDER_SECONDS=20; fi
 
 find_postgres_psql() {
   local candidate version_dir
@@ -213,8 +215,35 @@ postgres_connection_ready() {
   [[ "$result" == "1" ]]
 }
 
+show_postgres_initialize_guidance() {
+  info "Postgres.app is opening."
+  echo ""
+  info "If you see an Initialize button:"
+  info "1. Click Initialize."
+  info "2. Approve any macOS permission prompt."
+  info "3. Leave Postgres.app running."
+  echo ""
+  info "Setup will continue automatically when the database is ready."
+}
+
+activate_postgres_app() {
+  local app_name
+  app_name=$(basename "$POSTGRES_APP_PATH" .app)
+  if open -a "$app_name" >/dev/null 2>&1; then
+    ok "Postgres.app opened in the foreground"
+    return 0
+  fi
+  warn "Postgres.app could not be brought to the foreground."
+  if open "$POSTGRES_APP_PATH" >/dev/null 2>&1; then
+    info "Open Postgres.app from Applications if its window is not visible."
+    return 0
+  fi
+  warn "Open Postgres.app from Applications or Spotlight, then return to this setup."
+  return 1
+}
+
 show_postgres_recovery() {
-  warn "Postgres.app is not ready yet. Your setup is not frozen."
+  warn "Postgres.app is not ready yet. Setup is still waiting."
   info "If macOS shows a security message, select Open."
   info "In Postgres.app, select Initialize if that button appears."
   info "Review and approve any macOS permission dialog yourself."
@@ -224,12 +253,16 @@ show_postgres_recovery() {
 }
 
 wait_for_postgres_connection() {
-  local elapsed=0
+  local elapsed=0 next_reminder=0
   while (( elapsed < POSTGRES_WAIT_SECONDS )); do
     if postgres_connection_ready; then
       return 0
     fi
     printf '  Waiting for a database connection: %s/%s seconds\n' "$elapsed" "$POSTGRES_WAIT_SECONDS"
+    if (( elapsed >= next_reminder )); then
+      info "If Postgres.app shows Initialize, click it and approve any macOS permission prompt. Setup is still waiting."
+      next_reminder=$((elapsed + POSTGRES_REMINDER_SECONDS))
+    fi
     sleep "$POSTGRES_WAIT_INTERVAL"
     elapsed=$((elapsed + POSTGRES_WAIT_INTERVAL))
   done
@@ -883,9 +916,8 @@ if postgres_connection_ready; then
   POSTGRES_VERIFIED=true
   ok "Postgres.app accepted a real database connection"
 elif [[ -d "$POSTGRES_APP_PATH" ]]; then
-  info "The script opens Postgres.app."
-  show_postgres_recovery
-  open "$POSTGRES_APP_PATH" 2>/dev/null || true
+  show_postgres_initialize_guidance
+  activate_postgres_app || true
 
   while [[ "$POSTGRES_VERIFIED" != true ]]; do
     if [[ -z "$PSQL_BIN" ]]; then
@@ -899,11 +931,10 @@ elif [[ -d "$POSTGRES_APP_PATH" ]]; then
     fi
 
     show_postgres_recovery
-    POSTGRES_ACTION=$(gum choose "Retry the bounded check" "Show Postgres.app in Finder" "Continue without database readiness" "Stop setup")
+    POSTGRES_ACTION=$(gum choose "Open Postgres.app again and retry" "Retry the database connection check" "Stop setup")
     case "$POSTGRES_ACTION" in
-      "Retry the bounded check") open "$POSTGRES_APP_PATH" 2>/dev/null || true ;;
-      "Show Postgres.app in Finder") open -R "$POSTGRES_APP_PATH" 2>/dev/null || true ;;
-      "Continue without database readiness") warn "Database readiness is unverified. The receipt will include a recovery action."; break ;;
+      "Open Postgres.app again and retry") show_postgres_initialize_guidance; activate_postgres_app || true ;;
+      "Retry the database connection check") info "Retrying the database connection check without reopening Postgres.app." ;;
       *) fail "Postgres.app is not ready. Run this setup again after you initialize it."; exit 1 ;;
     esac
   done
