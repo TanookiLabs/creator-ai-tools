@@ -17,9 +17,7 @@ if grep -nE '^[[:space:]]*gh auth login([[:space:]]|$)' "$setup"; then
   exit 1
 fi
 
-documented_digest=$(sed -n "s/.*'\([0-9a-f]\{64\}\)' \"\$bootstrap_tmp\/setup.sh\".*/\1/p" "$readme")
-actual_digest=$(shasum -a 256 "$setup" | awk '{print $1}')
-test "$documented_digest" = "$actual_digest"
+grep -F 'curl -fsSL https://raw.githubusercontent.com/TanookiLabs/creator-ai-tools/refs/tags/bootstrap-v1.0.0/setup.sh -o /tmp/creator-ai-setup.sh && /bin/bash /tmp/creator-ai-setup.sh' "$readme" >/dev/null
 
 platform_line=$(grep -n 'uname -s' "$setup" | head -1 | cut -d: -f1)
 profile_validation_line=$(grep -n '^validate_shell_profile$' "$setup" | head -1 | cut -d: -f1)

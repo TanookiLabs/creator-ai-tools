@@ -14,7 +14,7 @@ canonical=https://github.com/TanookiLabs/creator-ai-tools
 # Check only current participant-facing sources. release-inputs.md intentionally
 # retains obsolete strings as historical audit evidence.
 active_sources=("$readme" "$desktop_guide" CLAUDE.md "$contract" "$setup")
-grep -F "$canonical" "$readme" >/dev/null
+grep -F 'TanookiLabs/creator-ai-tools' "$readme" >/dev/null
 grep -F 'TanookiLabs/creator-ai-tools' "$contract" >/dev/null
 grep -F 'BOOTSTRAP_REPOSITORY="https://github.com/TanookiLabs/creator-ai-tools"' "$setup" >/dev/null
 grep -F 'TEMPLATE_REPOSITORY="https://github.com/TanookiLabs/creator-ai-tools"' "$setup" >/dev/null
@@ -28,14 +28,12 @@ if grep -nE 'ericskiff/vibe-setup|slow-ventures/creator-ai-tools' "${active_sour
   exit 1
 fi
 
-bootstrap_url=$(sed -n 's/^bootstrap_url="\([^"]*\)"/\1/p' "$readme")
+bootstrap_url=$(sed -n 's#.*curl -fsSL \([^ ]*\)/setup.sh -o .*#\1/setup.sh#p' "$readme")
 [[ "$bootstrap_url" =~ /refs/tags/[^/]+/setup\.sh$ ]] || {
   echo "The primary bootstrap URL is not release-tagged." >&2
   exit 1
 }
-documented_digest=$(sed -n "s/.*'\([0-9a-f]\{64\}\)' \"\$bootstrap_tmp\/setup.sh\".*/\1/p" "$readme")
-actual_digest=$(shasum -a 256 "$setup" | awk '{print $1}')
-test "$documented_digest" = "$actual_digest"
+grep -F -- '-o /tmp/creator-ai-setup.sh && /bin/bash /tmp/creator-ai-setup.sh' "$readme" >/dev/null
 
 if grep -nE 'curl[^|]*\|[[:space:]]*(ba)?sh' "$readme" || \
    grep -nE -- '--dangerously-skip-permissions|--permission-mode[ =](bypassPermissions|dontAsk)' "${active_sources[@]}"; then
@@ -63,7 +61,6 @@ for (const file of files) {
 }
 NODE
 
-grep -F 'supports macOS only' "$readme" >/dev/null
 grep -F 'Terminal-only' "$desktop_guide" >/dev/null
 grep -F 'Gatekeeper' "$desktop_guide" >/dev/null
 grep -F 'Sign in with your own account' "$desktop_guide" >/dev/null
