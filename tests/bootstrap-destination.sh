@@ -22,11 +22,27 @@ mkdir -p "$test_root/source/app" "$test_root/source/prisma"
 touch "$test_root/source/package.json" "$test_root/source/package-lock.json"
 touch "$test_root/source/next.config.ts" "$test_root/source/prisma/schema.prisma"
 touch "$test_root/source/app/page.tsx"
-touch "$test_root/source/CLAUDE.md" "$test_root/source/README.md"
+touch "$test_root/source/CLAUDE.md"
+printf '# Candidate starter\n\nUse this current README.\n' > "$test_root/source/README.md"
 git -C "$test_root/source" add .
 git -C "$test_root/source" commit --quiet -m template
 TEMPLATE_REPOSITORY="$test_root/source"
 TEMPLATE_COMMIT=$(git -C "$test_root/source" rev-parse HEAD)
+
+# Candidate installer and template pins are independently required and may
+# intentionally differ. The template pin alone controls the checkout.
+VIBE_SETUP_INSTALLER_COMMIT=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+VIBE_SETUP_TEMPLATE_COMMIT="$TEMPLATE_COMMIT"
+resolve_provenance
+test "$BOOTSTRAP_COMMIT" = aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+test "$TEMPLATE_COMMIT" = "$VIBE_SETUP_TEMPLATE_COMMIT"
+test "$PROVENANCE_MODE" = candidate_pins
+VIBE_SETUP_TEMPLATE_COMMIT=""
+if resolve_provenance >/dev/null 2>&1; then
+  echo "Candidate provenance accepted a missing template commit." >&2
+  exit 1
+fi
+VIBE_SETUP_TEMPLATE_COMMIT="$TEMPLATE_COMMIT"
 
 mkdir -p "$test_root/paths/existing"
 expected_paths_root=$(cd "$test_root/paths" && pwd -P)
@@ -38,6 +54,7 @@ checkout_template "$root" absent
 test "$(destination_state "$root")" = complete
 test "$(git -C "$root" rev-parse HEAD)" = "$TEMPLATE_COMMIT"
 template_markers_are_valid "$root"
+grep -F 'Use this current README.' "$root/README.md" >/dev/null
 test "$(ensure_participant_branch "$root")" = participant-work
 test "$(git -C "$root" symbolic-ref --short HEAD)" = participant-work
 

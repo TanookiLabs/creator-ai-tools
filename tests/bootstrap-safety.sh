@@ -31,7 +31,10 @@ grep -F 'verify_gui_login_shell() {' "$setup" >/dev/null
 grep -F '/bin/zsh -lic' "$setup" >/dev/null
 grep -F 'mise node npm ruby claude' "$setup" >/dev/null
 
-grep -F 'curl -fsSL https://raw.githubusercontent.com/TanookiLabs/creator-ai-tools/refs/tags/bootstrap-v1.0.0/setup.sh -o /tmp/creator-ai-setup.sh && /bin/bash /tmp/creator-ai-setup.sh' "$readme" >/dev/null
+grep -F 'curl -fsSL https://raw.githubusercontent.com/TanookiLabs/creator-ai-tools/refs/tags/bootstrap-v1.1.0/setup.sh -o /tmp/creator-ai-setup.sh && /bin/bash /tmp/creator-ai-setup.sh' "$readme" >/dev/null
+grep -F 'resolve_provenance() {' "$setup" >/dev/null
+grep -F 'VIBE_SETUP_INSTALLER_COMMIT' "$setup" >/dev/null
+grep -F 'VIBE_SETUP_TEMPLATE_COMMIT' "$setup" >/dev/null
 
 platform_line=$(grep -n 'uname -s' "$setup" | head -1 | cut -d: -f1)
 profile_validation_line=$(grep -n '^validate_shell_profile$' "$setup" | head -1 | cut -d: -f1)
@@ -40,7 +43,7 @@ test "$platform_line" -lt "$profile_validation_line"
 test "$profile_validation_line" -lt "$discovery_line"
 
 output=$(printf '' | /bin/bash "$setup" 2>&1 || true)
-grep -F "Vibe Coding Setup 1.0.0" <<<"$output" >/dev/null
+grep -F "Vibe Coding Setup 1.1.0" <<<"$output" >/dev/null
 grep -F "Active phase: startup validation" <<<"$output" >/dev/null
 grep -F "needs an interactive terminal" <<<"$output" >/dev/null
 grep -F "No credentials or environment values are included" <<<"$output" >/dev/null

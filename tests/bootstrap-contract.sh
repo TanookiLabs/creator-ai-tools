@@ -30,9 +30,10 @@ git -C "$project" remote add origin "$TEMPLATE_REPOSITORY"
 PROJECT_ROOT=$(cd "$project" && pwd -P)
 CONTRACT_VERSION=1.0
 RUN_STARTED_AT=2026-09-06T12:00:00Z
-BOOTSTRAP_VERSION=1.0.0
+BOOTSTRAP_VERSION=1.1.0
 BOOTSTRAP_REPOSITORY="$TEMPLATE_REPOSITORY"
-BOOTSTRAP_COMMIT="$TEMPLATE_COMMIT"
+BOOTSTRAP_COMMIT=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+PROVENANCE_MODE=candidate_pins
 GITHUB_VERIFIED=true
 GITHUB_AUTH_EVIDENCE=interactive_status_verified
 POSTGRES_VERIFIED=true
@@ -60,6 +61,9 @@ test -f "$handoff"
 grep -F '"contract_version": "1.0"' "$receipt" >/dev/null
 grep -F "\"root\": \"$PROJECT_ROOT\"" "$receipt" >/dev/null
 grep -F "\"commit\": \"$TEMPLATE_COMMIT\"" "$receipt" >/dev/null
+grep -F '"commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"' "$receipt" >/dev/null
+grep -F '"source_mode": "candidate_pins"' "$receipt" >/dev/null
+node -e 'const r=require(process.argv[1]); if (r.provenance.bootstrap.commit === r.provenance.template.commit) throw new Error("installer and template commits were conflated")' "$receipt"
 grep -F '"status": "success"' "$receipt" >/dev/null
 grep -F '"blocking": false' "$receipt" >/dev/null
 grep -F '"evidence_code": "folder_selection_unverified"' "$receipt" >/dev/null

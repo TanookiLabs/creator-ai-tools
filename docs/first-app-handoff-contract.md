@@ -9,6 +9,11 @@ The contract carries only local, nonsecret setup facts. It does not authorize
 Claude, GitHub, database, filesystem, or deployment actions. Authentication,
 folder access, permission prompts, and any repair remain participant-controlled.
 
+Candidate rehearsals pin `VIBE_SETUP_INSTALLER_COMMIT` and
+`VIBE_SETUP_TEMPLATE_COMMIT` independently. The former identifies the immutable
+downloaded `setup.sh`; the latter identifies the checked-out starter. A newer
+installer must never infer its identity from an older tag.
+
 ## Files and ownership
 
 The producer writes these files inside the verified application root:
@@ -95,10 +100,14 @@ sorted lexicographically with no duplicates. `participant_actions` and
 ## Provenance
 
 `provenance.bootstrap` and `provenance.template` each require canonical
-`repository`, immutable `commit`, and `version`. Until tagged releases exist,
+`repository`, immutable `commit`, `version`, and `source_mode`. Until tagged releases exist,
 `version` is the full commit prefixed by `git:`. The bootstrap additionally
 requires the SHA-256 digest of the executed bootstrap bytes. Optional
 `source_url` must be immutable and credential-free.
+
+The bootstrap `commit` is the installer source commit; the template `commit`
+is the actual verified checkout commit. They are recorded separately even when
+they happen to match.
 
 The application object records the exact verified `root`, repository identity,
 checked-out commit, and links to durable repository instructions as relative

@@ -72,6 +72,8 @@ grep -F 'manual' "$desktop_guide" >/dev/null
 
 # The contract, producer, consumer, and examples must stay on the same major.
 grep -F 'CONTRACT_VERSION="1.0"' "$setup" >/dev/null
+grep -F 'BOOTSTRAP_VERSION="1.1.0"' "$setup" >/dev/null
+grep -F 'bootstrap-v1.1.0' "$readme" >/dev/null
 grep -F 'contract version `1.0`' "$contract" >/dev/null
 grep -F 'major version `1`' CLAUDE.md >/dev/null
 for example in docs/contracts/examples/*.json; do

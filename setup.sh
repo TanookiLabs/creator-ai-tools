@@ -8,14 +8,15 @@ set -e
 # to build the user's first app.
 #
 # Bootstrap release identity. Keep this value aligned with the immutable
-# release tag used by the README invocation.
-BOOTSTRAP_VERSION="1.0.0"
+# release tag used by the README invocation after the release is published.
+BOOTSTRAP_VERSION="1.1.0"
 BOOTSTRAP_RELEASE_TAG="bootstrap-v${BOOTSTRAP_VERSION}"
 ACTIVE_PHASE="startup validation"
 TEMPLATE_REPOSITORY="https://github.com/TanookiLabs/creator-ai-tools"
 BOOTSTRAP_REPOSITORY="https://github.com/TanookiLabs/creator-ai-tools"
 TEMPLATE_COMMIT=""
 BOOTSTRAP_COMMIT=""
+PROVENANCE_MODE=""
 CONTRACT_VERSION="1.0"
 RUN_STARTED_AT=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
 SHELL_CONFIGURATION_CHANGED=false
@@ -237,6 +238,7 @@ produce_first_app_contract() {
   RECEIPT_BOOTSTRAP_VERSION="$BOOTSTRAP_VERSION" \
   RECEIPT_BOOTSTRAP_REPOSITORY="$BOOTSTRAP_REPOSITORY" \
   RECEIPT_BOOTSTRAP_COMMIT="$BOOTSTRAP_COMMIT" \
+  RECEIPT_PROVENANCE_MODE="$PROVENANCE_MODE" \
   RECEIPT_BOOTSTRAP_SHA256="$(shasum -a 256 "$0" | awk '{print $1}')" \
   RECEIPT_TEMPLATE_REPOSITORY="$TEMPLATE_REPOSITORY" \
   RECEIPT_TEMPLATE_COMMIT="$TEMPLATE_COMMIT" \
@@ -340,8 +342,8 @@ const receipt = {
   run,
   application: { root, repository, commit, instructions: ["CLAUDE.md", "README.md", "docs/quality-verification.md"] },
   provenance: {
-    bootstrap: { repository: env.RECEIPT_BOOTSTRAP_REPOSITORY, commit: env.RECEIPT_BOOTSTRAP_COMMIT, version: `git:${env.RECEIPT_BOOTSTRAP_COMMIT}`, release_label: env.RECEIPT_BOOTSTRAP_VERSION, sha256: env.RECEIPT_BOOTSTRAP_SHA256 },
-    template: { repository, commit, version: `git:${commit}` },
+    bootstrap: { repository: env.RECEIPT_BOOTSTRAP_REPOSITORY, commit: env.RECEIPT_BOOTSTRAP_COMMIT, version: `git:${env.RECEIPT_BOOTSTRAP_COMMIT}`, release_label: env.RECEIPT_BOOTSTRAP_VERSION, source_mode: env.RECEIPT_PROVENANCE_MODE, sha256: env.RECEIPT_BOOTSTRAP_SHA256 },
+    template: { repository, commit, version: `git:${commit}`, source_mode: env.RECEIPT_PROVENANCE_MODE },
   },
   capabilities,
   participant_actions: actions,
@@ -1145,13 +1147,38 @@ valid_project_name() {
   [[ "$1" =~ ^[a-z0-9][a-z0-9._-]{0,62}$ && "$1" != "." && "$1" != ".." ]]
 }
 
+valid_full_commit() {
+  [[ "$1" =~ ^[0-9a-f]{40}$ ]]
+}
+
 resolve_release_commit() {
   local release_ref="refs/tags/${BOOTSTRAP_RELEASE_TAG}" refs commit
   refs=$(git ls-remote "$TEMPLATE_REPOSITORY" "$release_ref" "${release_ref}^{}") || return 1
   commit=$(printf '%s\n' "$refs" | awk '$2 ~ /\^\{\}$/ { peeled=$1 } $2 !~ /\^\{\}$/ { direct=$1 } END { print peeled ? peeled : direct }')
-  [[ "$commit" =~ ^[0-9a-f]{40}$ ]] || return 1
+  valid_full_commit "$commit" || return 1
   TEMPLATE_COMMIT="$commit"
   BOOTSTRAP_COMMIT="$commit"
+  PROVENANCE_MODE="release_tag"
+}
+
+resolve_provenance() {
+  local installer_commit="${VIBE_SETUP_INSTALLER_COMMIT:-}"
+  local template_commit="${VIBE_SETUP_TEMPLATE_COMMIT:-}"
+  if [[ -n "$installer_commit$template_commit" ]]; then
+    if [[ -z "$installer_commit" || -z "$template_commit" ]]; then
+      fail "Candidate setup requires both VIBE_SETUP_INSTALLER_COMMIT and VIBE_SETUP_TEMPLATE_COMMIT."
+      return 1
+    fi
+    if ! valid_full_commit "$installer_commit" || ! valid_full_commit "$template_commit"; then
+      fail "Candidate setup commits must be full lowercase Git SHA-1 values."
+      return 1
+    fi
+    BOOTSTRAP_COMMIT="$installer_commit"
+    TEMPLATE_COMMIT="$template_commit"
+    PROVENANCE_MODE="candidate_pins"
+    return 0
+  fi
+  resolve_release_commit
 }
 
 template_origin_is_approved() {
@@ -1237,11 +1264,13 @@ ensure_participant_branch() {
 
 SRC_DIR="${VIBE_SETUP_SOURCE_DIR:-$DEFAULT_SRC_DIR}"
 
-ACTIVE_PHASE="release provenance verification"
-if ! resolve_release_commit; then
-  fail "The approved release tag could not be resolved: ${BOOTSTRAP_RELEASE_TAG}"
+ACTIVE_PHASE="installer and template provenance verification"
+if ! resolve_provenance; then
+  fail "Set both candidate commit pins, or use a published ${BOOTSTRAP_RELEASE_TAG} release."
   exit 1
 fi
+info "Installer source commit: $BOOTSTRAP_COMMIT"
+info "Template checkout commit: $TEMPLATE_COMMIT"
 
 PROJECT_NAME="${VIBE_SETUP_PROJECT_NAME:-my-first-app}"
 if [[ -z "${VIBE_SETUP_PROJECT_NAME:-}" ]]; then
