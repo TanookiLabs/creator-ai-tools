@@ -9,6 +9,11 @@ The contract carries only local, nonsecret setup facts. It does not authorize
 Claude, GitHub, database, filesystem, or deployment actions. Authentication,
 folder access, permission prompts, and any repair remain participant-controlled.
 
+Setup is downloaded from the repository's `main` branch. Once Git is available,
+the installer resolves `origin/main` exactly once and uses that commit for the
+starter checkout throughout the run. The downloaded script is identified by its
+SHA-256 digest; it does not claim an independently verified Git commit.
+
 ## Files and ownership
 
 The producer writes these files inside the verified application root:
@@ -72,12 +77,16 @@ Each capability requires:
 Participant actions require `id`, `kind`, `blocking`, and `instruction`.
 `kind` is `authenticate`, `grant_permission`, `confirm`, `repair`, `retry`, or
 `continue`. Instructions must not embed secret values or tell an agent to bypass
-permissions. `blocking: true` means overall success cannot yet be claimed.
+permissions. `blocking: true` means overall success cannot yet be claimed. The
+Desktop folder-selection action is non-blocking when the installer cannot
+observe that selection reliably: a deep link or participant response is not
+proof that the exact folder was selected.
 
 `result.status` is derived, not caller-selected:
 
 - `success`: every release-required capability is `verified` and there are no
-  blocking participant actions.
+  blocking participant actions. An optional, explicitly unverified Desktop
+  folder-selection handoff does not change installation success.
 - `partial_failure`: an application root and valid provenance exist, but at
   least one required capability is not verified or a blocking action remains.
 - `failed`: no safe, verified application root/provenance handoff can be made.
@@ -90,11 +99,13 @@ sorted lexicographically with no duplicates. `participant_actions` and
 
 ## Provenance
 
-`provenance.bootstrap` and `provenance.template` each require canonical
-`repository`, immutable `commit`, and `version`. Until tagged releases exist,
-`version` is the full commit prefixed by `git:`. The bootstrap additionally
-requires the SHA-256 digest of the executed bootstrap bytes. Optional
-`source_url` must be immutable and credential-free.
+`provenance.bootstrap` records the canonical repository, source branch `main`,
+and SHA-256 digest of the downloaded installer bytes. `provenance.template`
+records that same repository and branch with the resolved immutable checkout
+commit. Optional `source_url` must be credential-free.
+
+The installer digest identifies only the downloaded bytes. The template commit
+is the actual verified checkout, pinned after resolving `origin/main` once.
 
 The application object records the exact verified `root`, repository identity,
 checked-out commit, and links to durable repository instructions as relative
@@ -110,7 +121,7 @@ On rerun, the producer rechecks capabilities rather than trusting the old
 receipt, constructs the complete new receipt, validates/redacts it, then writes
 receipt and handoff via same-directory temporary files plus atomic rename. The
 latest files are replacements, not merges. Given identical observed state, the
-same contract/bootstrap/template versions, and the same participant choices,
+same contract version, resolved `main` template commit, and the same participant choices,
 all fields except `run.id` and timestamps are identical.
 
 Before replacement, a `partial_failure` or `failed` latest receipt may be copied
@@ -150,7 +161,7 @@ section order:
 1. `# First App Handoff` and `<!-- generated; local-only; contract 1.0 -->`
 2. `## Next action` (all participant actions, or the safe continue action)
 3. `## Application` (exact root, repository, commit)
-4. `## Provenance` (bootstrap/template repository, version, commit, digest)
+4. `## Provenance` (source branch, template repository and commit, downloaded installer digest)
 5. `## Capability results` (table of ID, status, version, checked time, summary)
 6. `## Durable instructions` (repository-relative links)
 7. `## Run result` (status, run ID, start/finish timestamps, receipt location)

@@ -7,17 +7,38 @@ readme="$repo_root/README.md"
 
 /bin/bash -n "$setup"
 
-# Authentication is observed only in an interactive GUI login context. The
-# bootstrap never launches authentication or treats SSH as authoritative.
+# GitHub browser authentication is launched only in an interactive GUI login
+# context. SSH and background shells remain non-authoritative.
 grep -F 'github_auth_context_is_authoritative' "$setup" >/dev/null
 grep -F 'SSH_CONNECTION' "$setup" >/dev/null
 grep -F 'gui_context_required' "$setup" >/dev/null
-if grep -nE '^[[:space:]]*gh auth login([[:space:]]|$)' "$setup"; then
-  echo "The bootstrap must not automate GitHub authentication." >&2
+grep -F 'gh auth login --web --git-protocol https' "$setup" >/dev/null
+gui_gate_line=$(grep -n 'if ! github_auth_context_is_authoritative; then' "$setup" | tail -1 | cut -d: -f1)
+github_login_line=$(awk -v gate="$gui_gate_line" 'NR > gate && /gh auth login --web --git-protocol https/ { print NR; exit }' "$setup")
+test "$gui_gate_line" -lt "$github_login_line"
+
+# Interactive Homebrew work must remain visible and preserve the tool's exit
+# status instead of hiding prompts inside a spinner.
+grep -F 'brew_install_visible() {' "$setup" >/dev/null
+grep -F 'brew install "$@"' "$setup" >/dev/null
+grep -F 'Retry this phase from a macOS Terminal with:' "$setup" >/dev/null
+if grep -nE 'spin .*brew install' "$setup"; then
+  echo "Homebrew installation is hidden behind a spinner." >&2
   exit 1
 fi
 
-grep -F 'curl -fsSL https://raw.githubusercontent.com/TanookiLabs/creator-ai-tools/refs/tags/bootstrap-v1.0.0/setup.sh -o /tmp/creator-ai-setup.sh && /bin/bash /tmp/creator-ai-setup.sh' "$readme" >/dev/null
+grep -F 'verify_gui_login_shell() {' "$setup" >/dev/null
+grep -F '/bin/zsh -lic' "$setup" >/dev/null
+grep -F 'mise node npm ruby claude' "$setup" >/dev/null
+
+grep -F 'curl -fsSL https://raw.githubusercontent.com/TanookiLabs/creator-ai-tools/main/setup.sh -o /tmp/creator-ai-setup.sh && /bin/bash /tmp/creator-ai-setup.sh' "$readme" >/dev/null
+grep -F 'resolve_main_commit() {' "$setup" >/dev/null
+grep -F 'refs/heads/${SOURCE_BRANCH}' "$setup" >/dev/null
+grep -F 'Pinned starter template to ${TEMPLATE_COMMIT} from ${SOURCE_BRANCH}' "$setup" >/dev/null
+if rg -n 'VIBE_SETUP_(INSTALLER|TEMPLATE)_COMMIT|bootstrap-v1\.1\.0-rc\.1|resolve_release_commit|source_mode|release_tag' "$setup" "$readme" "$repo_root/docs/first-app-handoff-contract.md"; then
+  echo "Strict release-candidate mechanics remain in active bootstrap sources." >&2
+  exit 1
+fi
 
 platform_line=$(grep -n 'uname -s' "$setup" | head -1 | cut -d: -f1)
 profile_validation_line=$(grep -n '^validate_shell_profile$' "$setup" | head -1 | cut -d: -f1)
@@ -26,7 +47,7 @@ test "$platform_line" -lt "$profile_validation_line"
 test "$profile_validation_line" -lt "$discovery_line"
 
 output=$(printf '' | /bin/bash "$setup" 2>&1 || true)
-grep -F "Vibe Coding Setup 1.0.0" <<<"$output" >/dev/null
+grep -F "Vibe Coding Setup" <<<"$output" >/dev/null
 grep -F "Active phase: startup validation" <<<"$output" >/dev/null
 grep -F "needs an interactive terminal" <<<"$output" >/dev/null
 grep -F "No credentials or environment values are included" <<<"$output" >/dev/null

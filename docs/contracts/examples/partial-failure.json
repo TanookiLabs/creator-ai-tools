@@ -9,8 +9,8 @@
     "instructions": ["CLAUDE.md", "README.md", "docs/quality-verification.md"]
   },
   "provenance": {
-    "bootstrap": { "repository": "https://github.com/TanookiLabs/creator-ai-tools", "commit": "0393501676cf5f3751089699eafb5090411ff8c7", "version": "git:0393501676cf5f3751089699eafb5090411ff8c7", "sha256": "dfd14dce60c91f22452df0e9e2677ee0f054e2b2ca8d9bf5f471da4db0178580" },
-    "template": { "repository": "https://github.com/TanookiLabs/creator-ai-tools", "commit": "0393501676cf5f3751089699eafb5090411ff8c7", "version": "git:0393501676cf5f3751089699eafb5090411ff8c7" }
+    "bootstrap": { "repository": "https://github.com/TanookiLabs/creator-ai-tools", "source_branch": "main", "sha256": "dfd14dce60c91f22452df0e9e2677ee0f054e2b2ca8d9bf5f471da4db0178580" },
+    "template": { "repository": "https://github.com/TanookiLabs/creator-ai-tools", "source_branch": "main", "commit": "0393501676cf5f3751089699eafb5090411ff8c7" }
   },
   "capabilities": [
     { "id": "auth.github", "status": "unverified", "checked_at": "2026-09-06T12:10:02Z", "summary": "GitHub authentication still requires a participant-session check.", "evidence_code": "interactive_check_required", "recovery_action_id": "authenticate.github" },

@@ -21,7 +21,8 @@ test("v1 examples contain the required producer/consumer fields and no secrets",
     }
     assert.ok(receipt.application.root.startsWith("/"))
     assert.match(receipt.application.commit, commitPattern)
-    assert.match(receipt.provenance.bootstrap.commit, commitPattern)
+    assert.equal(receipt.provenance.bootstrap.source_branch, "main")
+    assert.equal(receipt.provenance.template.source_branch, "main")
     assert.match(receipt.provenance.template.commit, commitPattern)
     assert.match(receipt.provenance.bootstrap.sha256, /^[0-9a-f]{64}$/)
     assert.match(receipt.timestamps.started_at, timestampPattern)

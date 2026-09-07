@@ -1,25 +1,39 @@
 # Creator AI Tools
 
-A ready-to-use starter for building and launching an app with Claude.
+## Start here
 
-It includes authentication, a database, a polished interface, and everything you need to deploy with Vercel.
+This is a ready-to-use starter for building and launching an app with Claude.
+It includes authentication, a database, a polished interface, and Vercel
+deployment support.
 
-- [Hackathon show notes](show-notes.md)
-- [Eric’s 201 talk slides](slides/slides.md)
+If you just want the shortest path:
 
-## Get started
+1. Bootstrap the starter.
+2. Read the guide that matches what you are trying to do.
+3. Build the first useful version.
+4. Deploy to Vercel when you are ready.
 
 You need a [Claude account](https://claude.ai) and a [GitHub account](https://github.com/signup).
 
 Open Terminal, paste this command, and press Return:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/TanookiLabs/creator-ai-tools/refs/tags/bootstrap-v1.0.0/setup.sh -o /tmp/creator-ai-setup.sh && /bin/bash /tmp/creator-ai-setup.sh
+curl -fsSL https://raw.githubusercontent.com/TanookiLabs/creator-ai-tools/main/setup.sh -o /tmp/creator-ai-setup.sh && /bin/bash /tmp/creator-ai-setup.sh
 ```
 
-Follow the prompts. Setup will install or reuse the tools you need, prepare your copy of the starter, connect GitHub, start the local database, and open the project in Claude.
+Follow the prompts. Setup installs or reuses the tools you need, prepares your copy of this starter, connects GitHub, starts the local database, and opens Claude Desktop.
 
 When Claude opens, tell it what you want to build.
+
+## Choose your path
+
+- **Start a project** if you are turning this starter into your own app.
+- **Read the setup guides** if you need help with secrets, APIs, or deployment.
+- **Open the show notes** if you want the broader list of tools and workflows we discussed.
+- **Skim the slides** if you want the high-level process before you start building.
+
+- [Hackathon show notes](show-notes.md)
+- [Eric’s 201 talk slides](slides/slides.md)
 
 ## What is included
 

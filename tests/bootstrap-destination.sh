@@ -6,9 +6,11 @@ setup="$repo_root/setup.sh"
 test_root=$(mktemp -d "${TMPDIR:-/tmp}/bootstrap-destination.XXXXXX")
 trap 'rm -rf "$test_root"' EXIT
 
-# Load only the destination functions. The complete bootstrap is interactive
-# and macOS-only; these focused tests use a local immutable Git source.
-sed -n '/^resolve_destination() {/,/^SRC_DIR=/p' "$setup" | sed '$d' > "$test_root/functions.sh"
+# Load only the provenance and destination functions. The complete bootstrap
+# is interactive and macOS-only; these focused tests use a local Git source.
+sed -n '/^valid_full_commit() {/,/^}$/p' "$setup" > "$test_root/functions.sh"
+sed -n '/^resolve_main_commit() {/,/^}$/p' "$setup" >> "$test_root/functions.sh"
+sed -n '/^resolve_destination() {/,/^SRC_DIR=/p' "$setup" | sed '$d' >> "$test_root/functions.sh"
 # shellcheck source=/dev/null
 source "$test_root/functions.sh"
 info() { :; }
@@ -22,11 +24,25 @@ mkdir -p "$test_root/source/app" "$test_root/source/prisma"
 touch "$test_root/source/package.json" "$test_root/source/package-lock.json"
 touch "$test_root/source/next.config.ts" "$test_root/source/prisma/schema.prisma"
 touch "$test_root/source/app/page.tsx"
-touch "$test_root/source/CLAUDE.md" "$test_root/source/README.md"
+touch "$test_root/source/CLAUDE.md"
+printf '# Candidate starter\n\nUse this current README.\n' > "$test_root/source/README.md"
 git -C "$test_root/source" add .
 git -C "$test_root/source" commit --quiet -m template
+git -C "$test_root/source" branch -M main
 TEMPLATE_REPOSITORY="$test_root/source"
-TEMPLATE_COMMIT=$(git -C "$test_root/source" rev-parse HEAD)
+SOURCE_BRANCH=main
+TEMPLATE_COMMIT=""
+
+# Resolve main once, then retain that exact checkout commit for this run.
+resolve_main_commit
+initial_template_commit="$TEMPLATE_COMMIT"
+test "$TEMPLATE_COMMIT" = "$(git -C "$test_root/source" rev-parse main)"
+
+# A later change to main cannot change the already-pinned checkout.
+printf 'change\n' > "$test_root/source/moving"
+git -C "$test_root/source" add moving
+git -C "$test_root/source" commit --quiet -m moving
+test "$TEMPLATE_COMMIT" = "$initial_template_commit"
 
 mkdir -p "$test_root/paths/existing"
 expected_paths_root=$(cd "$test_root/paths" && pwd -P)
@@ -36,8 +52,11 @@ root="$test_root/Documents/src/my-app"
 test "$(destination_state "$root")" = absent
 checkout_template "$root" absent
 test "$(destination_state "$root")" = complete
-test "$(git -C "$root" rev-parse HEAD)" = "$TEMPLATE_COMMIT"
+test "$(git -C "$root" rev-parse HEAD)" = "$initial_template_commit"
 template_markers_are_valid "$root"
+grep -F 'Use this current README.' "$root/README.md" >/dev/null
+test "$(ensure_participant_branch "$root")" = participant-work
+test "$(git -C "$root" symbolic-ref --short HEAD)" = participant-work
 
 # An unrelated nonempty destination is classified without changing its data.
 unrelated="$test_root/Documents/src/existing"
@@ -57,10 +76,7 @@ test "$(destination_state "$partial")" = incomplete
 checkout_template "$partial" incomplete
 test "$(destination_state "$partial")" = complete
 
-# A moving ref is never accepted in place of the frozen full commit.
-printf 'change\n' > "$test_root/source/moving"
-git -C "$test_root/source" add moving
-git -C "$test_root/source" commit --quiet -m moving
+# A moving main ref is never accepted in place of the initially pinned commit.
 git -C "$root" fetch --quiet origin HEAD
 git -C "$root" checkout --quiet --detach FETCH_HEAD
 test "$(destination_state "$root")" = unrelated

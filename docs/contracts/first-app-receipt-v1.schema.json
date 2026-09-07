@@ -50,15 +50,14 @@
     "gitCommit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
     "httpsRepository": { "type": "string", "pattern": "^https://[^/?#@]+/[^/?#]+/[^/?#]+$" },
     "sourceProvenance": {
-      "type": "object", "required": ["repository", "commit", "version"],
-      "properties": { "repository": { "$ref": "#/$defs/httpsRepository" }, "commit": { "$ref": "#/$defs/gitCommit" }, "version": { "type": "string", "minLength": 1 }, "source_url": { "type": "string", "pattern": "^https://[^?#@]+$" } },
+      "type": "object", "required": ["repository", "source_branch", "commit"],
+      "properties": { "repository": { "$ref": "#/$defs/httpsRepository" }, "source_branch": { "const": "main" }, "commit": { "$ref": "#/$defs/gitCommit" }, "source_url": { "type": "string", "pattern": "^https://[^?#@]+$" } },
       "additionalProperties": true
     },
     "bootstrapProvenance": {
-      "allOf": [
-        { "$ref": "#/$defs/sourceProvenance" },
-        { "type": "object", "required": ["sha256"], "properties": { "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" } } }
-      ]
+      "type": "object", "required": ["repository", "source_branch", "sha256"],
+      "properties": { "repository": { "$ref": "#/$defs/httpsRepository" }, "source_branch": { "const": "main" }, "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" } },
+      "additionalProperties": true
     },
     "capability": {
       "type": "object", "required": ["id", "status", "checked_at", "summary"],

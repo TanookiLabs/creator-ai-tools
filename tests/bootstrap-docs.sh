@@ -16,11 +16,11 @@ canonical=https://github.com/TanookiLabs/creator-ai-tools
 active_sources=("$readme" "$desktop_guide" CLAUDE.md "$contract" "$setup")
 grep -F 'TanookiLabs/creator-ai-tools' "$readme" >/dev/null
 grep -F 'TanookiLabs/creator-ai-tools' "$contract" >/dev/null
-grep -F 'BOOTSTRAP_REPOSITORY="https://github.com/TanookiLabs/creator-ai-tools"' "$setup" >/dev/null
 grep -F 'TEMPLATE_REPOSITORY="https://github.com/TanookiLabs/creator-ai-tools"' "$setup" >/dev/null
 
-if grep -nE 'raw\.githubusercontent\.com/[^ /]+/[^ /]+/(main|master)/|codeload\.github\.com/[^ /]+/[^ /]+/(zip|tar\.gz)/(main|master)([^[:alnum:]]|$)' "${active_sources[@]}"; then
-  echo "A moving production source is present in active bootstrap documentation or code." >&2
+expected_bootstrap_url=https://raw.githubusercontent.com/TanookiLabs/creator-ai-tools/main/setup.sh
+if rg -n 'raw\.githubusercontent\.com/TanookiLabs/creator-ai-tools/' "${active_sources[@]}" | grep -Fv "$expected_bootstrap_url"; then
+  echo "An unsupported bootstrap source is present in active documentation or code." >&2
   exit 1
 fi
 if grep -nE 'ericskiff/vibe-setup|slow-ventures/creator-ai-tools' "${active_sources[@]}"; then
@@ -29,8 +29,8 @@ if grep -nE 'ericskiff/vibe-setup|slow-ventures/creator-ai-tools' "${active_sour
 fi
 
 bootstrap_url=$(sed -n 's#.*curl -fsSL \([^ ]*\)/setup.sh -o .*#\1/setup.sh#p' "$readme")
-[[ "$bootstrap_url" =~ /refs/tags/[^/]+/setup\.sh$ ]] || {
-  echo "The primary bootstrap URL is not release-tagged." >&2
+[[ "$bootstrap_url" == "$expected_bootstrap_url" ]] || {
+  echo "The primary bootstrap URL is not the supported main installer." >&2
   exit 1
 }
 grep -F -- '-o /tmp/creator-ai-setup.sh && /bin/bash /tmp/creator-ai-setup.sh' "$readme" >/dev/null
@@ -64,13 +64,16 @@ NODE
 grep -F 'Terminal-only' "$desktop_guide" >/dev/null
 grep -F 'Gatekeeper' "$desktop_guide" >/dev/null
 grep -F 'Sign in with your own account' "$desktop_guide" >/dev/null
-grep -F 'folder confirmation' "$desktop_guide" >/dev/null
+grep -F 'Open folder' "$desktop_guide" >/dev/null
+grep -F 'does not claim' "$desktop_guide" >/dev/null
 grep -F 'Keychain' "$desktop_guide" >/dev/null
 grep -F 'participant' "$desktop_guide" >/dev/null
 grep -F 'manual' "$desktop_guide" >/dev/null
 
 # The contract, producer, consumer, and examples must stay on the same major.
 grep -F 'CONTRACT_VERSION="1.0"' "$setup" >/dev/null
+grep -F 'SOURCE_BRANCH="main"' "$setup" >/dev/null
+grep -F '/main/setup.sh' "$readme" >/dev/null
 grep -F 'contract version `1.0`' "$contract" >/dev/null
 grep -F 'major version `1`' CLAUDE.md >/dev/null
 for example in docs/contracts/examples/*.json; do
