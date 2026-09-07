@@ -23,6 +23,28 @@ printf '%s\n' 'eval "$(mise activate zsh)"' > "$SHELL_PROFILE"
 PSQL_BIN=""
 OPTIONAL_CLI_STATE=healthy
 BREW_PROFILE_LINE=""
+managed_shell_profile_is_ready
+
+# An already healthy Claude command can be configured by the participant and
+# does not need our managed PATH block. An off-PATH or newly installed Claude
+# command does need that durable block before a fresh login shell is ready.
+OPTIONAL_CLI_STATE=off-PATH
+if managed_shell_profile_is_ready; then
+  echo "An off-PATH Claude command was accepted without a managed PATH block." >&2
+  exit 1
+fi
+append_profile 'export PATH="$HOME/.local/bin:$PATH"' "claude-cli"
+managed_shell_profile_is_ready
+
+printf '%s\n' 'eval "$(mise activate zsh)"' > "$SHELL_PROFILE"
+OPTIONAL_CLI_STATE=missing
+if managed_shell_profile_is_ready; then
+  echo "A fresh Claude installation was accepted without a managed PATH block." >&2
+  exit 1
+fi
+append_profile 'export PATH="$HOME/.local/bin:$PATH"' "claude-cli"
+managed_shell_profile_is_ready
+OPTIONAL_CLI_STATE=healthy
 
 cat > "$test_root/bin/zsh" <<'EOF'
 #!/bin/sh

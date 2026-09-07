@@ -151,7 +151,11 @@ managed_shell_profile_is_ready() {
   if [[ -n "${PSQL_BIN:-}" ]]; then
     grep -qF 'export PATH="/Applications/Postgres.app/Contents/Versions/latest/bin:$PATH"' "$SHELL_PROFILE" || return 1
   fi
-  if [[ "${OPTIONAL_CLI_STATE:-}" != "healthy" && "${OPTIONAL_CLI_STATE:-}" != "off-PATH" ]]; then
+  # A Claude binary found outside PATH works for this process only after
+  # preflight adds its directory. Its managed PATH entry is still required so
+  # a fresh GUI login shell can find it. A genuinely healthy Claude setup may
+  # be participant-configured and needs no additional managed entry.
+  if [[ "${OPTIONAL_CLI_STATE:-}" != "healthy" ]]; then
     grep -qF 'export PATH="$HOME/.local/bin:$PATH"' "$SHELL_PROFILE" || return 1
   fi
   if [[ -n "${BREW_PROFILE_LINE:-}" ]]; then

@@ -70,6 +70,10 @@ grep -F '<!-- generated; local-only; contract 1.0 -->' "$handoff" >/dev/null
 grep -F '## Next action' "$handoff" >/dev/null
 grep -F '## Run result' "$handoff" >/dev/null
 ! grep -F 'ghp_fixture_secret_value' <<<"$first_output$(cat "$receipt")$(cat "$handoff")" >/dev/null
+# A successful fresh install writes its initial receipt during this first
+# invocation. It is not a rerun and must not need a second installer pass.
+test "$(node -p "require('$receipt').run.sequence")" -eq 1
+node -e 'const run=require(process.argv[1]).run; if (Object.hasOwn(run, "rerun_of")) throw new Error("First-run receipt unexpectedly references a rerun.")' "$receipt"
 
 # Successful reruns replace current files, increment sequence, retain no
 # diagnostic failure, and keep stable observed fields semantically identical.
