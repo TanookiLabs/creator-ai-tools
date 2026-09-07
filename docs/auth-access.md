@@ -24,9 +24,11 @@ credentials or expose these values through a `NEXT_PUBLIC_` variable.
 
 ## Production origin and secret boundary
 
-For production, retain only the variable names in records, receipts, tests, or
-diagnostics—never their values. Reuse a healthy existing `BETTER_AUTH_SECRET`;
-do not rotate or generate one as part of deployment configuration.
+For production, retain only variable names in redacted deployment summaries,
+tests, or diagnostics—never their values. Reuse an existing healthy
+`BETTER_AUTH_SECRET`. For a new project with no secret, generate one locally
+and stream it directly to Vercel without displaying or persisting it. Never
+rotate an existing secret automatically.
 
 Set `BETTER_AUTH_URL` only after the participant selects and verifies one
 canonical HTTPS origin for the selected production Vercel project. It must be

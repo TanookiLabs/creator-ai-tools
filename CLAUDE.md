@@ -36,8 +36,9 @@ with `npm run db:migrate`. `npm run db:push` is only for an explicitly approved
 disposable prototype. Never seed, reset, or migrate a shared/production database
 as an incidental build step.
 
-No Git push or build is a production deployment. A deployment or production
-migration requires explicit participant approval at its own gate. Never weaken
+No Git push or build is a production deployment. The configuration, reviewed
+production migration, and deployment are covered by the single final
+participant confirmation described by the deployment skill. Never weaken
 authentication, bypass tool permissions, change repository access, overwrite
 occupied paths, or expose credentials to make a task pass.
 

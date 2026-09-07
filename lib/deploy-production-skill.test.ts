@@ -41,8 +41,11 @@ test("every relevant document keeps the workflow experimental and one-confirmati
   assert.match(documents["docs/release-handoff.md"], /Experimental production rehearsal sequence/)
   assert.match(documents["docs/participant-owned-provider-rehearsal.md"], /not the current\s+operating procedure/i)
   assert.match(documents["README.md"], /experimental/i)
+  assert.match(documents["CLAUDE.md"], /configuration, reviewed\s+production migration, and deployment are covered by the single final\s+participant confirmation/i)
+  assert.match(documents["docs/auth-access.md"], /For a new project with no secret, generate one locally\s+and stream it directly to Vercel without displaying or persisting it/i)
   assert.match(documents["docs/auth-access.md"], /asks once before configuration, migration,\s+and deployment/i)
   assert.match(documents["docs/prisma-migrations.md"], /single final production summary and confirmation/i)
+  assert.doesNotMatch(documents["docs/prisma-migrations.md"], /production configuration record|\breceipt\b/i)
 })
 
 test("the normal path has no participant deployment command or Neon state framework", () => {
@@ -56,4 +59,13 @@ test("the Prisma verification fixture is local to schema validation", () => {
   const helper = readFileSync("scripts/verify-prisma.mjs", "utf8")
   assert.match(helper, /\["prisma", "validate"\]/)
   assert.doesNotMatch(helper, /\["prisma", "migrate"\]|db push|writeFile|\.env(?:\s|["'])/i)
+})
+
+test("bootstrap checks fall back to grep and fail on inspection errors", () => {
+  for (const path of ["tests/bootstrap-safety.sh", "tests/bootstrap-docs.sh"]) {
+    const script = readFileSync(path, "utf8")
+    assert.match(script, /command -v rg/)
+    assert.match(script, /grep -nE/)
+    assert.match(script, /search_status > 1/)
+  }
 })

@@ -11,6 +11,14 @@ release_inputs=docs/release-inputs.md
 setup=setup.sh
 canonical=https://github.com/TanookiLabs/creator-ai-tools
 
+search_extended() {
+  if command -v rg >/dev/null 2>&1; then
+    rg -n "$@"
+  else
+    grep -nE "$@"
+  fi
+}
+
 # Check only current participant-facing sources. release-inputs.md intentionally
 # retains obsolete strings as historical audit evidence.
 active_sources=("$readme" "$desktop_guide" CLAUDE.md "$contract" "$setup")
@@ -19,9 +27,18 @@ grep -F 'TanookiLabs/creator-ai-tools' "$contract" >/dev/null
 grep -F 'TEMPLATE_REPOSITORY="https://github.com/TanookiLabs/creator-ai-tools"' "$setup" >/dev/null
 
 expected_bootstrap_url=https://raw.githubusercontent.com/TanookiLabs/creator-ai-tools/main/setup.sh
-if rg -n 'raw\.githubusercontent\.com/TanookiLabs/creator-ai-tools/' "${active_sources[@]}" | grep -Fv "$expected_bootstrap_url"; then
-  echo "An unsupported bootstrap source is present in active documentation or code." >&2
-  exit 1
+if bootstrap_sources=$(search_extended 'raw\.githubusercontent\.com/TanookiLabs/creator-ai-tools/' "${active_sources[@]}"); then
+  if unsupported_sources=$(grep -Fv "$expected_bootstrap_url" <<<"$bootstrap_sources"); then
+    printf '%s\n' "$unsupported_sources"
+    echo "An unsupported bootstrap source is present in active documentation or code." >&2
+    exit 1
+  fi
+else
+  search_status=$?
+  if (( search_status > 1 )); then
+    echo "Unable to inspect bootstrap sources." >&2
+    exit "$search_status"
+  fi
 fi
 if grep -nE 'ericskiff/vibe-setup|slow-ventures/creator-ai-tools' "${active_sources[@]}"; then
   echo "An obsolete bootstrap source is present in active documentation or code." >&2

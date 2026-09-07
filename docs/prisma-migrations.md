@@ -21,8 +21,9 @@ Both values are required in the environment for this schema. Keep them pointed a
 
 ## Production mapping and migration boundary
 
-Do not record, commit, print, or include connection URLs in a receipt. The
-production configuration record contains exactly these names:
+Do not commit, print, or include connection URLs in redacted deployment
+summaries or diagnostic output. Production configuration uses exactly these
+names:
 
 - `DATABASE_URL`
 - `DIRECT_URL`

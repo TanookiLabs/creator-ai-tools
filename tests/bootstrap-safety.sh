@@ -5,6 +5,14 @@ repo_root=$(cd "$(dirname "$0")/.." && pwd)
 setup="$repo_root/setup.sh"
 readme="$repo_root/README.md"
 
+search_extended() {
+  if command -v rg >/dev/null 2>&1; then
+    rg -n "$@"
+  else
+    grep -nE "$@"
+  fi
+}
+
 /bin/bash -n "$setup"
 
 # GitHub browser authentication is launched only in an interactive GUI login
@@ -41,9 +49,15 @@ grep -F 'curl -fsSL https://raw.githubusercontent.com/TanookiLabs/creator-ai-too
 grep -F 'resolve_main_commit() {' "$setup" >/dev/null
 grep -F 'refs/heads/${SOURCE_BRANCH}' "$setup" >/dev/null
 grep -F 'Pinned starter template to ${TEMPLATE_COMMIT} from ${SOURCE_BRANCH}' "$setup" >/dev/null
-if rg -n 'VIBE_SETUP_(INSTALLER|TEMPLATE)_COMMIT|bootstrap-v1\.1\.0-rc\.1|resolve_release_commit|source_mode|release_tag' "$setup" "$readme" "$repo_root/docs/first-app-handoff-contract.md"; then
+if search_extended 'VIBE_SETUP_(INSTALLER|TEMPLATE)_COMMIT|bootstrap-v1\.1\.0-rc\.1|resolve_release_commit|source_mode|release_tag' "$setup" "$readme" "$repo_root/docs/first-app-handoff-contract.md"; then
   echo "Strict release-candidate mechanics remain in active bootstrap sources." >&2
   exit 1
+else
+  search_status=$?
+  if (( search_status > 1 )); then
+    echo "Unable to inspect bootstrap sources for stale release mechanics." >&2
+    exit "$search_status"
+  fi
 fi
 
 platform_line=$(grep -n 'uname -s' "$setup" | head -1 | cut -d: -f1)
