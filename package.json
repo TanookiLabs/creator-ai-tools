@@ -13,7 +13,7 @@
     "verify:first-session": "node scripts/verify-first-session.mjs",
     "test:bootstrap": "bash tests/bootstrap-safety.sh && bash tests/bootstrap-destination.sh && bash tests/bootstrap-contract.sh && bash tests/bootstrap-desktop.sh && bash tests/bootstrap-postgres.sh && bash tests/bootstrap-shell.sh && bash tests/bootstrap-docs.sh",
     "verify:template": "bash scripts/verify-template-release.sh",
-    "verify": "npm run verify:template && npm run lint && npm run typecheck && npm run test:quality && prisma validate && npm run build && npm audit --omit=dev",
+    "verify": "npm run verify:template && npm run lint && npm run typecheck && npm run test:quality && node scripts/verify-prisma.mjs && npm run build && npm audit --omit=dev",
     "postinstall": "prisma generate",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate deploy",

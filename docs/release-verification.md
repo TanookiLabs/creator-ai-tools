@@ -1,6 +1,7 @@
 # Release verification
 
-Run the static release gate before deploying:
+Run the static release gate from a fresh checkout before requesting an
+assistant-led production deployment:
 
 ```bash
 npm run verify
@@ -9,8 +10,10 @@ npm run verify
 The command runs ESLint, TypeScript, Prisma schema validation, the production
 build, and a production dependency audit. It does not modify the database.
 
-Apply reviewed migrations explicitly before a release whose environment needs
-them:
+The build and this verification command do not modify the database. If a
+reviewed migration is needed, the assistant requests a separate fresh
+production-migration confirmation after drift and recovery checks, then runs it
+once:
 
 ```bash
 npm run db:migrate
@@ -18,9 +21,10 @@ npm run db:migrate
 
 ## Browser scenario
 
-Use a new browser profile or incognito window at the local or deployed
-`BETTER_AUTH_URL`. Use a unique `@example.test` address for the account-creation
-step so the scenario is repeatable without affecting a real user.
+Use a new browser profile or incognito window at the selected canonical HTTPS
+production `BETTER_AUTH_URL`. Use a unique `@example.test` address for the
+account-creation step so the scenario is repeatable without affecting a real
+user.
 
 1. Visit `/dashboard` while logged out. Confirm the route redirects to
    `/sign-in` with a `callbackUrl` for the requested dashboard URL.
@@ -43,3 +47,8 @@ step so the scenario is repeatable without affecting a real user.
 
 The dashboard's first-run checklist is deliberately browser-local and optional;
 storage errors must never block the resource links or in-session checklist UI.
+
+Report concise, redacted smoke evidence; never include secret values or
+connection strings. If any observation fails, stop further mutations. A code-only rollback may redeploy the prior compatible
+application artifact with participant direction, but must not alter the
+database; database recovery is a separate owner-approved incident.

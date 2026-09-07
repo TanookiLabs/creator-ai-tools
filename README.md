@@ -11,7 +11,7 @@ If you just want the shortest path:
 1. Bootstrap the starter.
 2. Read the guide that matches what you are trying to do.
 3. Build the first useful version.
-4. Deploy to Vercel when you are ready.
+4. Request an assistant-led production release when you are ready.
 
 You need a [Claude account](https://claude.ai) and a [GitHub account](https://github.com/signup).
 
@@ -58,15 +58,17 @@ Start by describing your idea to Claude:
 
 Claude will help you customize the starter, run it locally, and save your work to GitHub.
 
-## Deploy with Vercel
+## Experimental Vercel deployment
 
-When your app is ready, ask Claude:
+When the reviewed app is ready, ask your assistant:
 
-> Deploy this app to Vercel.
+> Deploy this application to Vercel.
 
-Claude will walk you through signing in, connecting your GitHub repository, configuring the required project settings, and publishing the app.
-
-You remain in control of account access, permissions, and deployment.
+This is an experimental assistant-led workflow until it passes a live disposable
+Vercel and Postgres rehearsal. The assistant rediscovers the project, uses
+Vercel Marketplace before suggesting a separate database login, keeps secrets
+out of chat, shows one final non-secret production summary, and stops on a
+failed migration, deployment, or smoke check.
 
 ## Need help?
 

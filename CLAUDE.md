@@ -36,10 +36,24 @@ with `npm run db:migrate`. `npm run db:push` is only for an explicitly approved
 disposable prototype. Never seed, reset, or migrate a shared/production database
 as an incidental build step.
 
-Pushing `main` does not deploy; the `production` branch deploys to Vercel. A
-deployment or production migration requires explicit participant approval.
-Never weaken authentication, bypass tool permissions, change repository access,
-overwrite occupied paths, or expose credentials to make a task pass.
+No Git push or build is a production deployment. A deployment or production
+migration requires explicit participant approval at its own gate. Never weaken
+authentication, bypass tool permissions, change repository access, overwrite
+occupied paths, or expose credentials to make a task pass.
+
+## Experimental assistant-led production deployments
+
+Use `.claude/skills/deploy-production/SKILL.md` when a participant asks to
+release, ship, or deploy this application. It is an experimental Vercel-first
+workflow until a disposable participant-owned rehearsal succeeds. Rediscover
+Git and Vercel state on every invocation, use Vercel Marketplace before asking
+for a separate Neon login, and keep database URLs and secret values out of
+chat, Git, and reports. The participant approves Vercel identity, Marketplace
+terms/plan choices, and one final displayed production summary. Builds remain
+non-mutating; apply reviewed migrations once using the direct production
+connection, then deploy and observe HTTPS, database, and Better Auth smoke
+checks. Do not add public deployment scripts, daemons, launchers, credential
+helpers, permission bypasses, or user-facing npm deployment commands.
 
 ## Generated first-app handoff
 

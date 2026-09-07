@@ -16,7 +16,7 @@ The project owner provisions, grants, rotates, and revokes values. Developers ow
 
 1. Classify each value as public configuration or secret. A `NEXT_PUBLIC_` variable is delivered to browsers and must never contain a secret.
 2. Add only the variable name and a useful comment to `.env.example`, for example `OPTIONAL_PROVIDER_API_KEY=`. Never include a working or shared value.
-3. Put local values in `.env`. Put deployed values in the target environment's encrypted store, scoped separately per environment.
+3. Put local values in `.env`. Put deployed values in the target environment's encrypted store, scoped separately per environment. During the assistant-led production path, supply and record variable names only; enter values directly in the approved provider interface after its separate confirmation gate.
 4. Read secrets only in server code. Avoid logging configuration objects, authorization headers, connection strings, tokens, or webhook bodies containing private data.
 5. Document whether a variable is required or opt-in, its owner, consumers, rotation procedure, and behavior when absent.
 6. Rotate on a schedule appropriate to the provider and immediately after suspected disclosure; deploy the replacement before revoking the old value when the provider supports overlap.
@@ -25,7 +25,7 @@ The project owner provisions, grants, rotates, and revokes values. Developers ow
 
 - The app fails clearly for missing required configuration and keeps optional integrations disabled when their variables are absent.
 - `git status`, staged diffs, and repository history contain no local environment file or real value.
-- A production smoke test succeeds without exposing values to browser source, client bundles, error pages, or logs.
+- A production smoke test succeeds without exposing values to browser source, client bundles, error pages, logs, or redacted release notes.
 
 ## If it fails
 

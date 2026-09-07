@@ -22,6 +22,29 @@ This flow adds no environment variables. It continues to require:
 Keep values in local `.env` and deployment environment settings. Never commit
 credentials or expose these values through a `NEXT_PUBLIC_` variable.
 
+## Production origin and secret boundary
+
+For production, retain only the variable names in records, receipts, tests, or
+diagnostics—never their values. Reuse a healthy existing `BETTER_AUTH_SECRET`;
+do not rotate or generate one as part of deployment configuration.
+
+Set `BETTER_AUTH_URL` only after the participant selects and verifies one
+canonical HTTPS origin for the selected production Vercel project. It must be
+an exact origin (no path, query, fragment, or credentials), not HTTP,
+localhost, a preview alias, a generated deployment URL, or an unverified or
+mismatched project origin. Any failure to establish that mapping stops the
+configuration and subsequent migration/deployment steps.
+
+The experimental assistant-led workflow records these names only and does not
+ask for values in chat. The participant handles Vercel identity and any
+Marketplace approval; after discovery and validation, the assistant presents
+one non-secret production summary and asks once before configuration, migration,
+and deployment. After deployment, HTTPS and protected-route observations are
+reported concisely with sensitive details redacted. If authentication smoke
+verification fails, stop further mutations; a code-only rollback changes only
+the application artifact, while database recovery is a separate approved
+incident.
+
 ## Focused verification
 
 Run `npm run test:auth` for callback safety cases, followed by `npm run lint`,

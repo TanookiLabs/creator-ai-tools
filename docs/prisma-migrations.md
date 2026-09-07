@@ -19,6 +19,42 @@ There are intentionally no reset or force-reset commands in `package.json`. Do n
 
 Both values are required in the environment for this schema. Keep them pointed at the same database/branch; use separate values for development, staging, and production.
 
+## Production mapping and migration boundary
+
+Do not record, commit, print, or include connection URLs in a receipt. The
+production configuration record contains exactly these names:
+
+- `DATABASE_URL`
+- `DIRECT_URL`
+- `BETTER_AUTH_SECRET`
+- `BETTER_AUTH_URL`
+
+Before setting those production variables, use Vercel Marketplace discovery in
+a **disposable rehearsal** to prove that `DATABASE_URL` is pooled and
+`DIRECT_URL` is direct for the selected Postgres integration. Treat a missing,
+differently selected, unrehearsed, or drifted pair as a stop condition. Do not
+infer the target from a connection URL or expose provider output during
+production execution.
+
+The migration boundary is deliberately narrow. Review the committed migration
+SQL, validate configuration, verify no schema drift, identify a named backup
+and recovery owner, and retain disposable rehearsal evidence. Include the
+migration in the single final production summary and confirmation. The current
+rehearsal assumption is to inject the selected Vercel project's production
+environment directly into the reviewed command:
+
+```bash
+vercel env run -e production -- npm run db:migrate
+```
+
+This exact CLI behavior is unverified until the disposable rehearsal; do not
+substitute a preview/development environment, print or copy values, or use a
+different command after failure. If confirmation is withdrawn, migration fails,
+drift is found, or any requirement is missing, stop deployment. Do not use
+`db:push`, reset, seed, rollback SQL, or destructive repair. Recovery is a
+separate approved incident procedure. The production build remains non-mutating
+and a code-only rollback never changes the database.
+
 ## Better Auth baseline
 
 `prisma/migrations/20260902000000_better_auth_baseline/migration.sql` is the reviewed initial state for the existing Better Auth tables: `user`, `session`, `account`, and `verification`. It preserves the model/table mappings and cascade relations used by `lib/auth.ts`.

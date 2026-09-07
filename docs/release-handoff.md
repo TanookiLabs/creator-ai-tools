@@ -39,7 +39,7 @@ assignments in it must remain empty.
 
 ## Reviewer gate (read-only and local build)
 
-From a fresh checkout of the exact candidate commit, with required environment
+From a fresh checkout of the exact reviewed commit, with required environment
 variables set to an isolated non-production environment where needed:
 
 ```bash
@@ -54,7 +54,7 @@ npm audit --omit=dev
 git status --short
 ```
 
-`verify:template` scans tracked and unignored release-candidate files for
+`verify:template` scans tracked and unignored reviewed files for
 common credential signatures, requires empty `.env.example` assignments, and
 proves that `build`, `start`, `verify`, and `db:migrate` contain no seed/reset
 operation. The lint, typecheck, `test:quality`, Prisma validation, build, and
@@ -62,7 +62,7 @@ production audit are the same checks composed by `npm run verify`.
 
 The final `git status --short` must print nothing in the fresh checkout after
 verification. If generated output changes tracked files, or any command fails,
-the candidate is not ready. Also review the candidate diff and commit history;
+the reviewed commit is not ready. Also review its diff and commit history;
 pattern scanning supplements review and does not prove a secret was never
 committed. If a real credential is found, stop, have its owner revoke/rotate
 it, remove it through the approved history-remediation process, and rerun the
@@ -87,17 +87,27 @@ only committed migrations, asserts zero users, builds, and performs logged-out
 smoke checks. It never seeds, pushes schema, resets, drops, or deploys. Do not
 run it against shared, staging, or production data.
 
-## Deployment sequence (operator-owned; do not run for this handoff)
+## Experimental production rehearsal sequence
 
-1. Pin the reviewed commit/artifact and record the prior verified revision.
-2. Confirm backups/recovery ownership and review every committed migration.
-3. Apply `npm run db:migrate` once in a controlled migration job using the
-   target `DIRECT_URL`. Do not use `db:push`, `migrate reset`, or fixtures.
-4. Build with `npm run build`, start with `npm run start`, and expose the
-   application at the owner-supplied `BETTER_AUTH_URL`. A build must not mutate
-   the database.
-5. Promote only after the health checks below pass. Record commit, artifact,
-   migration IDs, time, verifier, and redacted results—not secret values.
+This is not a supported production sequence until a disposable participant-owned
+Vercel and Marketplace Postgres rehearsal succeeds. The owner asks the
+assistant to release one reviewed commit to one selected Vercel project. No
+push, build, or provider badge is an automatic deployment. Read-only discovery
+comes first; Vercel and Git remain the source of current state.
+
+The participant personally completes Vercel identity and any Marketplace
+provider agreement or plan selection. The assistant reuses existing project,
+database, and secret configuration where safe; it records names, not values.
+After non-mutating validation, committed SQL review, drift checks, and recovery
+ownership checks, it presents one concise non-secret summary and asks once
+before configuration changes, the reviewed migration, and deployment. A refusal
+or cancelled provider interaction stops all later mutations.
+
+The migration uses the selected Vercel production environment only; its CLI
+mechanism remains a rehearsal assumption until proven. Do not switch to a
+preview/development environment or retry with `db:push`, reset, seed, or
+destructive SQL after a failure. Report only the commit, safe deployment
+identifier, migration result, verifier, time, and redacted smoke outcome.
 
 ## Health checks
 
@@ -123,11 +133,11 @@ regresses, migration state is unexpected, participant checks fail, new runtime
 errors appear, or secrets appear in artifacts/logs. Treat unexpected rows in a
 fresh rehearsal database as a release blocker.
 
-A code rollback redeploys the previously verified artifact and does not change
+A code-only rollback redeploys the previously verified compatible artifact and does not change
 the database. Never reset, drop, reverse migration SQL, delete users, or seed
 records to make rollback pass. If the prior artifact is incompatible with the
 current schema, stop and involve the release and database owners for an
-approved forward fix or backup/restore incident procedure.
+approved forward fix or a separate owner-approved database recovery incident.
 
 ## Required revalidation
 
