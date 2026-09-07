@@ -64,7 +64,7 @@
       "properties": {
         "id": { "$ref": "#/$defs/id" }, "status": { "enum": ["verified", "unverified", "unavailable", "failed", "skipped"] },
         "checked_at": { "$ref": "#/$defs/timestamp" }, "summary": { "type": "string", "minLength": 1, "maxLength": 240 },
-        "version": { "type": "string", "maxLength": 80 }, "evidence_code": { "$ref": "#/$defs/id" }, "recovery_action_id": { "$ref": "#/$defs/id" }
+        "version": { "type": "string", "maxLength": 80 }, "evidence_code": { "$ref": "#/$defs/id" }, "recovery_action_id": { "$ref": "#/$defs/id" }, "missing_commands": { "type": "array", "uniqueItems": true, "items": { "enum": ["mise", "node", "npm", "ruby", "claude"] } }
       }, "additionalProperties": true
     },
     "action": {

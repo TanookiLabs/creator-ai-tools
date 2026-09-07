@@ -36,6 +36,7 @@ GITHUB_AUTH_EVIDENCE=interactive_status_verified
 POSTGRES_VERIFIED=true
 DESKTOP_VERIFIED=false
 GUI_LOGIN_SHELL_VERIFIED=true
+GUI_LOGIN_SHELL_MISSING=""
 
 # The GitHub version fixture resembles a token. It must be replaced before
 # disk and terminal output, while participant authentication stays untouched.
@@ -106,9 +107,14 @@ grep -F 'Do not reauthenticate because of an SSH or background check alone.' "$r
 GITHUB_VERIFIED=true
 GITHUB_AUTH_EVIDENCE=interactive_status_verified
 GUI_LOGIN_SHELL_VERIFIED=false
+GUI_LOGIN_SHELL_MISSING="node,claude"
 produce_first_app_contract >/dev/null
 grep -F '"status": "partial_failure"' "$receipt" >/dev/null
 grep -F '"id": "verify.gui_login_shell"' "$receipt" >/dev/null
+grep -F '"missing_commands": [' "$receipt" >/dev/null
+grep -F '"node"' "$receipt" >/dev/null
+grep -F '"claude"' "$receipt" >/dev/null
+grep -F 'confirm these commands are available: node, claude' "$receipt" >/dev/null
 
 # Reject unsafe roots and non-main provenance before writing state.
 SOURCE_BRANCH=feature

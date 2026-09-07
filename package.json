@@ -11,7 +11,7 @@
     "test:contract": "tsx --test lib/first-app-contract.test.ts",
     "test:first-session": "node --test scripts/verify-first-session.test.mjs",
     "verify:first-session": "node scripts/verify-first-session.mjs",
-    "test:bootstrap": "bash tests/bootstrap-safety.sh && bash tests/bootstrap-destination.sh && bash tests/bootstrap-contract.sh && bash tests/bootstrap-desktop.sh && bash tests/bootstrap-postgres.sh && bash tests/bootstrap-docs.sh",
+    "test:bootstrap": "bash tests/bootstrap-safety.sh && bash tests/bootstrap-destination.sh && bash tests/bootstrap-contract.sh && bash tests/bootstrap-desktop.sh && bash tests/bootstrap-postgres.sh && bash tests/bootstrap-shell.sh && bash tests/bootstrap-docs.sh",
     "verify:template": "bash scripts/verify-template-release.sh",
     "verify": "npm run verify:template && npm run lint && npm run typecheck && npm run test:quality && prisma validate && npm run build && npm audit --omit=dev",
     "postinstall": "prisma generate",

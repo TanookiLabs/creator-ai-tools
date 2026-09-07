@@ -72,6 +72,7 @@ pre_fail() { echo -e "  ${RED}✗${NC} $1"; }
 
 SHELL_PROFILE="${VIBE_SETUP_SHELL_PROFILE:-$HOME/.zshrc}"
 PROFILE_MARKER_PREFIX="vibe-coding-setup"
+GUI_LOGIN_SHELL_BIN="/bin/zsh"
 
 file_owner_uid() {
   local owner
@@ -142,6 +143,20 @@ append_profile() {
     echo "$end"
   } >> "$SHELL_PROFILE"
   SHELL_CONFIGURATION_CHANGED=true
+}
+
+managed_shell_profile_is_ready() {
+  [[ -f "$SHELL_PROFILE" && ! -L "$SHELL_PROFILE" && -r "$SHELL_PROFILE" ]] || return 1
+  grep -qF 'eval "$(mise activate zsh)"' "$SHELL_PROFILE" || return 1
+  if [[ -n "${PSQL_BIN:-}" ]]; then
+    grep -qF 'export PATH="/Applications/Postgres.app/Contents/Versions/latest/bin:$PATH"' "$SHELL_PROFILE" || return 1
+  fi
+  if [[ "${OPTIONAL_CLI_STATE:-}" != "healthy" && "${OPTIONAL_CLI_STATE:-}" != "off-PATH" ]]; then
+    grep -qF 'export PATH="$HOME/.local/bin:$PATH"' "$SHELL_PROFILE" || return 1
+  fi
+  if [[ -n "${BREW_PROFILE_LINE:-}" ]]; then
+    grep -qF "$BREW_PROFILE_LINE" "$SHELL_PROFILE" || return 1
+  fi
 }
 
 tool_state() {
@@ -291,6 +306,7 @@ produce_first_app_contract() {
   RECEIPT_POSTGRES_STATUS="${POSTGRES_VERIFIED:-false}" \
   RECEIPT_DESKTOP_STATUS="${DESKTOP_VERIFIED:-false}" \
   RECEIPT_GUI_LOGIN_SHELL_STATUS="${GUI_LOGIN_SHELL_VERIFIED:-false}" \
+  RECEIPT_GUI_LOGIN_SHELL_MISSING="${GUI_LOGIN_SHELL_MISSING:-}" \
   node <<'FIRST_APP_CONTRACT_JS'
 const fs = require("node:fs");
 const path = require("node:path");
@@ -358,10 +374,13 @@ const run = { id: runId, sequence };
 if (previous?.run?.id) run.rerun_of = previous.run.id;
 const actions = [];
 const githubEvidence = ["interactive_status_verified", "interactive_status_failed", "gui_context_required"].includes(env.RECEIPT_GITHUB_EVIDENCE) ? env.RECEIPT_GITHUB_EVIDENCE : "interactive_check_required";
+const guiMissingCommands = [...new Set(String(env.RECEIPT_GUI_LOGIN_SHELL_MISSING || "").split(",").filter(command => ["mise", "node", "npm", "ruby", "claude"].includes(command)))];
 if (env.RECEIPT_GITHUB_STATUS !== "true") actions.push({ id: "authenticate.github", kind: "authenticate", blocking: true, instruction: githubEvidence === "gui_context_required" ? "Open Terminal from your macOS desktop and rerun setup so GitHub CLI can use your GUI login Keychain. Do not reauthenticate because of an SSH or background check alone." : "In your interactive Mac terminal, run gh auth login --web --git-protocol https yourself, complete the browser and Keychain prompts, then rerun setup." });
 if (env.RECEIPT_POSTGRES_STATUS !== "true") actions.push({ id: "repair.postgres", kind: "repair", blocking: true, instruction: "Open and initialize Postgres.app, confirm its server is running, then rerun the setup." });
-if (env.RECEIPT_GUI_LOGIN_SHELL_STATUS !== "true") actions.push({ id: "verify.gui_login_shell", kind: "retry", blocking: true, instruction: "Open a new Terminal window from the macOS desktop, confirm mise, node, npm, ruby, and claude are available, then rerun setup." });
+if (env.RECEIPT_GUI_LOGIN_SHELL_STATUS !== "true") actions.push({ id: "verify.gui_login_shell", kind: "retry", blocking: true, instruction: `Open a new Terminal window from the macOS desktop, confirm these commands are available: ${guiMissingCommands.join(", ") || "mise, node, npm, ruby, and claude"}, then rerun setup.` });
 if (env.RECEIPT_DESKTOP_STATUS !== "true") actions.push({ id: "confirm.desktop_folder", kind: "confirm", blocking: false, instruction: "In Claude Desktop Code, open the exact application root manually. Folder selection is not verified by this installer." });
+const guiLoginShellCapability = capability("tool.gui_login_shell", env.RECEIPT_GUI_LOGIN_SHELL_STATUS === "true", env.RECEIPT_GUI_LOGIN_SHELL_STATUS === "true" ? "A fresh macOS GUI login shell resolved mise, node, npm, ruby, and claude." : guiMissingCommands.length ? `A fresh macOS GUI login shell could not find: ${guiMissingCommands.join(", ")}.` : "A fresh macOS GUI login shell did not verify all required development tools.", undefined, { id: "verify.gui_login_shell", evidence: "gui_login_shell_unverified" });
+if (guiMissingCommands.length) guiLoginShellCapability.missing_commands = guiMissingCommands;
 const capabilities = [
   capability("auth.github", env.RECEIPT_GITHUB_STATUS === "true", env.RECEIPT_GITHUB_STATUS === "true" ? "GitHub CLI authentication was verified in the participant's interactive GUI login context." : githubEvidence === "gui_context_required" ? "This SSH or background result is not authoritative for the participant's GUI Keychain." : "GitHub CLI authentication was not verified in the participant's interactive GUI login context.", env.RECEIPT_GH_VERSION, { id: "authenticate.github", evidence: githubEvidence }),
   capability("handoff.claude_desktop", env.RECEIPT_DESKTOP_STATUS === "true", env.RECEIPT_DESKTOP_STATUS === "true" ? "The exact application root was verified by a reliable Desktop mechanism." : "Claude Desktop folder selection is not observable by this installer and remains unverified.", undefined, { id: "confirm.desktop_folder", evidence: "folder_selection_unverified" }),
@@ -369,7 +388,7 @@ const capabilities = [
   capability("tool.git", true, "Git is available.", env.RECEIPT_GIT_VERSION),
   capability("tool.node", true, "Node.js is available.", env.RECEIPT_NODE_VERSION),
   capability("tool.npm", true, "npm is available.", env.RECEIPT_NPM_VERSION),
-  capability("tool.gui_login_shell", env.RECEIPT_GUI_LOGIN_SHELL_STATUS === "true", env.RECEIPT_GUI_LOGIN_SHELL_STATUS === "true" ? "A fresh macOS GUI login shell resolved mise, node, npm, ruby, and claude." : "A fresh macOS GUI login shell did not verify all required development tools.", undefined, { id: "verify.gui_login_shell", evidence: "gui_login_shell_unverified" }),
+  guiLoginShellCapability,
 ].sort((a, b) => a.id.localeCompare(b.id));
 actions.sort((a, b) => a.id.localeCompare(b.id));
 const requiredCapabilityIds = new Set(["auth.github", "service.postgres", "tool.git", "tool.gui_login_shell", "tool.node", "tool.npm"]);
@@ -577,17 +596,52 @@ brew_install_visible() {
   exit "$status"
 }
 
+collect_gui_login_shell_missing() {
+  local raw status=0 command missing=""
+  raw=$("$GUI_LOGIN_SHELL_BIN" -lic 'for tool in mise node npm ruby claude; do command -v "$tool" >/dev/null 2>&1 || print -r -- "$tool"; done' 2>/dev/null) || status=$?
+  if (( status != 0 )); then
+    printf '%s' 'mise,node,npm,ruby,claude'
+    return
+  fi
+  while IFS= read -r command; do
+    case "$command" in
+      mise|node|npm|ruby|claude)
+        [[ ",$missing," == *",$command,"* ]] || missing="${missing:+$missing,}$command"
+        ;;
+    esac
+  done <<< "$raw"
+  printf '%s' "$missing"
+}
+
 verify_gui_login_shell() {
+  local first_missing second_missing
   GUI_LOGIN_SHELL_VERIFIED=false
+  GUI_LOGIN_SHELL_MISSING=""
   if ! github_auth_context_is_authoritative; then
     warn "A fresh GUI login-shell check requires Terminal from the macOS desktop."
     return
   fi
-  if /bin/zsh -lic 'for tool in mise node npm ruby claude; do command -v "$tool" >/dev/null || exit 1; done' >/dev/null 2>&1; then
+  first_missing=$(collect_gui_login_shell_missing)
+  if [[ -z "$first_missing" ]]; then
     GUI_LOGIN_SHELL_VERIFIED=true
     ok "A fresh GUI login shell resolves mise, Node.js, npm, Ruby, and Claude"
+    return
+  fi
+
+  warn "A fresh macOS GUI login shell could not find: $first_missing"
+  info "Setup will recheck its managed shell configuration and check once more."
+  if managed_shell_profile_is_ready; then
+    info "Managed shell configuration is present and readable."
   else
-    warn "A fresh GUI login shell could not resolve every required development tool."
+    warn "Managed shell configuration could not be fully confirmed before the retry."
+  fi
+  second_missing=$(collect_gui_login_shell_missing)
+  if [[ -z "$second_missing" ]]; then
+    GUI_LOGIN_SHELL_VERIFIED=true
+    ok "A fresh GUI login shell resolves all required tools after one internal retry"
+  else
+    GUI_LOGIN_SHELL_MISSING="$second_missing"
+    warn "A fresh macOS GUI login shell could not find: $second_missing"
     info "Open a new Terminal window from the macOS desktop, then rerun setup."
   fi
 }
@@ -1095,6 +1149,9 @@ info "Claude Code is the AI agent that writes code with you."
 echo ""
 
 if [[ "$OPTIONAL_CLI_STATE" == "healthy" || "$OPTIONAL_CLI_STATE" == "off-PATH" ]]; then
+  if [[ "$OPTIONAL_CLI_STATE" == "off-PATH" ]]; then
+    append_profile 'export PATH="$HOME/.local/bin:$PATH"' "claude-cli"
+  fi
   ok "Claude Code installed ($(claude --version 2>/dev/null | head -1))"
 else
   spin "The script installs Claude Code..." bash -c 'curl -fsSL https://claude.ai/install.sh | bash'

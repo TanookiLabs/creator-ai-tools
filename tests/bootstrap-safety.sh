@@ -28,8 +28,14 @@ if grep -nE 'spin .*brew install' "$setup"; then
 fi
 
 grep -F 'verify_gui_login_shell() {' "$setup" >/dev/null
-grep -F '/bin/zsh -lic' "$setup" >/dev/null
+grep -F 'GUI_LOGIN_SHELL_BIN="/bin/zsh"' "$setup" >/dev/null
+grep -F 'collect_gui_login_shell_missing() {' "$setup" >/dev/null
 grep -F 'mise node npm ruby claude' "$setup" >/dev/null
+grep -F 'Setup will recheck its managed shell configuration and check once more.' "$setup" >/dev/null
+grep -F 'if [[ "$OPTIONAL_CLI_STATE" == "off-PATH" ]]; then' "$setup" >/dev/null
+last_profile_change_line=$(grep -n '^append_profile ' "$setup" | tail -1 | cut -d: -f1)
+gui_verification_line=$(grep -n '^verify_gui_login_shell$' "$setup" | tail -1 | cut -d: -f1)
+test "$last_profile_change_line" -lt "$gui_verification_line"
 
 grep -F 'curl -fsSL https://raw.githubusercontent.com/TanookiLabs/creator-ai-tools/main/setup.sh -o /tmp/creator-ai-setup.sh && /bin/bash /tmp/creator-ai-setup.sh' "$readme" >/dev/null
 grep -F 'resolve_main_commit() {' "$setup" >/dev/null
