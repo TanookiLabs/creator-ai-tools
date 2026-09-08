@@ -25,11 +25,14 @@ or a failed migration.
 Never push to `TanookiLabs/creator-ai-tools`. If it is `origin`, rename it to
 `template`, set its push URL to `DISABLED`, then create a participant-owned
 private repository with `gh repo create <name> --private --source=. --remote=origin --push`
-after the deployment request authorizes that repair. Resume discovery after
-confirming its owner and URL. Do not overwrite, repoint, or infer an occupied
-repository; leave origin absent and ask for a name/owner choice instead. A
-read-only `template` remote is allowed. If participant history might be
-rewritten, stop rather than repairing it automatically.
+before Vercel discovery. The explicit request to deploy authorizes this safe
+private-repository setup; do not ask a second repository confirmation. Verify
+the known owner/URL and that remote `participant-work` resolves to the local
+commit. If creation succeeds but its first push fails, retain the origin and
+resume the absent branch safely on rerun. Do not overwrite, repoint, or infer
+an occupied repository; stop for a name/owner choice or conflicting remote
+branch. A read-only `template` remote is allowed. If participant history might
+be rewritten, stop rather than repairing it automatically.
 
 ## Participant-controlled actions
 
@@ -52,12 +55,12 @@ verified canonical HTTPS production origin belonging to the selected project.
 
 Run focused tests, lint, type checking, Prisma validation with safe injected configuration, and build checks appropriate to the change. Use the ephemeral CLI as `npx --yes vercel@latest ...`; do not add a dependency or globally install it. Record the resolved `npx --yes vercel@latest --version` result in the rehearsal report. Confirm migration files are committed and determine pending migrations without changing schema. Warn “This appears to be an unchanged starter application” when applicable; include it in the final summary, but continue an explicitly approved disposable rehearsal.
 
-Before mutations, show one concise non-secret summary: repository and commit,
-repository repair if needed, Vercel project, Postgres integration, configured
-variable names, canonical production URL, starter warning, and migration
-status. Ask once: “Continue with the production migration and deployment?” A
-general affirmative answer authorizes the listed repository repair,
-configuration, reviewed migration, and deployment.
+Before Vercel mutations, show one concise non-secret summary: verified
+participant repository and commit, Vercel project, Postgres integration,
+configured variable names, canonical production URL, starter warning, and
+migration status. Ask once: “Continue with the production migration and
+deployment?” A general affirmative answer authorizes Vercel configuration, the
+reviewed migration, and deployment only.
 
 After confirmation, run the reviewed migration once through the selected
 Vercel project's production environment, then deploy the reviewed commit. The

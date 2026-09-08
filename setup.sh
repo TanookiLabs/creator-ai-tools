@@ -1361,26 +1361,99 @@ convert_legacy_template_checkout() {
   initialize_participant_repository "$root"
 }
 
+participant_repository_details() {
+  local project_name="$1"
+  gh repo view "$GH_USER/$project_name" --json nameWithOwner,url --jq '.nameWithOwner + "|" + .url' 2>/dev/null || true
+}
+
+participant_origin_is_owned() {
+  local root="$1" project_name="$2" origin details expected_name expected_url
+  origin=$(git -C "$root" config --get remote.origin.url 2>/dev/null || true)
+  details=$(participant_repository_details "$project_name")
+  expected_name="$GH_USER/$project_name"
+  expected_url="https://github.com/$expected_name"
+  [[ "$details" == "$expected_name|$expected_url" ]] &&
+    [[ "${origin%.git}" == "$expected_url" ]]
+}
+
+record_participant_repository() {
+  local root="$1" project_name="$2"
+  printf '%s\n%s\n' "$GH_USER/$project_name" "https://github.com/$GH_USER/$project_name" > "$root/.git/vibe-participant-repository"
+}
+
+participant_repository_marker_matches() {
+  local root="$1" project_name="$2"
+  [[ -f "$root/.git/vibe-participant-repository" ]] &&
+    [[ "$(sed -n '1p' "$root/.git/vibe-participant-repository")" == "$GH_USER/$project_name" ]] &&
+    [[ "$(sed -n '2p' "$root/.git/vibe-participant-repository")" == "https://github.com/$GH_USER/$project_name" ]]
+}
+
+ensure_participant_branch_remote() {
+  local root="$1" project_name="$2" local_commit remote_commit
+  if ! participant_origin_is_owned "$root" "$project_name"; then
+    fail "The existing origin is not the authenticated participant's expected repository. It was not changed."
+    return 1
+  fi
+  local_commit=$(git -C "$root" rev-parse participant-work)
+  remote_commit=$(git -C "$root" ls-remote --heads origin refs/heads/participant-work | awk 'NR == 1 { print $1 }')
+  if [[ -z "$remote_commit" ]]; then
+    if ! git -C "$root" push origin participant-work:participant-work; then
+      warn "The private repository exists and origin is preserved, but participant-work was not pushed. Rerun setup after resolving the GitHub push failure."
+      return 0
+    fi
+    remote_commit=$(git -C "$root" ls-remote --heads origin refs/heads/participant-work | awk 'NR == 1 { print $1 }')
+  fi
+  if [[ "$remote_commit" != "$local_commit" ]]; then
+    fail "The remote participant-work branch differs from this local commit. It was not overwritten."
+    return 1
+  fi
+  record_participant_repository "$root" "$project_name"
+  ok "Private participant repository: $GH_USER/$project_name https://github.com/$GH_USER/$project_name"
+}
+
 create_participant_repository() {
-  local root="$1" project_name="$2" repository
+  local root="$1" project_name="$2" details expected_url creation_status
   [[ "$GITHUB_VERIFIED" == "true" && -n "$GH_USER" ]] || {
     warn "GitHub is unavailable. This project remains a fresh local repository with no origin."
     return 0
   }
-  if gh repo view "$GH_USER/$project_name" >/dev/null 2>&1; then
-    warn "GitHub repository $GH_USER/$project_name already exists. This local project was not connected to it."
-    return 0
+
+  if git -C "$root" remote get-url origin >/dev/null 2>&1; then
+    ensure_participant_branch_remote "$root" "$project_name"
+    return
+  fi
+
+  details=$(participant_repository_details "$project_name")
+  expected_url="https://github.com/$GH_USER/$project_name"
+  if [[ -n "$details" ]]; then
+    if ! participant_repository_marker_matches "$root" "$project_name"; then
+      warn "GitHub repository $GH_USER/$project_name already exists. This local project was not connected to it."
+      return 0
+    fi
+    git -C "$root" remote add origin "$expected_url.git"
+    ensure_participant_branch_remote "$root" "$project_name"
+    return
   fi
   if [[ "${VIBE_SETUP_ASSUME_YES:-0}" != "1" ]] && ! confirm "Create private GitHub repository $GH_USER/$project_name and push participant-work?"; then
     warn "Private GitHub repository creation was skipped. The deployment skill can create one later."
     return 0
   fi
-  if ! gh repo create "$project_name" --private --source="$root" --remote=origin --push; then
+
+  creation_status=0
+  gh repo create "$project_name" --private --source="$root" --remote=origin --push || creation_status=$?
+  details=$(participant_repository_details "$project_name")
+  if [[ "$details" != "$GH_USER/$project_name|$expected_url" ]]; then
     warn "GitHub repository creation did not complete. This project remains local with no origin."
     return 0
   fi
-  repository=$(gh repo view --json nameWithOwner,url --jq '.nameWithOwner + " " + .url' 2>/dev/null || true)
-  [[ -n "$repository" ]] && ok "Private participant repository: $repository"
+  if ! git -C "$root" remote get-url origin >/dev/null 2>&1; then
+    git -C "$root" remote add origin "$expected_url.git"
+  fi
+  record_participant_repository "$root" "$project_name"
+  if (( creation_status != 0 )); then
+    warn "GitHub created the private repository, but its initial push did not complete. Origin is preserved and setup will resume it safely."
+  fi
+  ensure_participant_branch_remote "$root" "$project_name"
 }
 
 SRC_DIR="${VIBE_SETUP_SOURCE_DIR:-$DEFAULT_SRC_DIR}"

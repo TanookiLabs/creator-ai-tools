@@ -78,13 +78,17 @@ GH_USER=""
 create_participant_repository "$root" my-app
 test "$(git -C "$root" remote get-url origin 2>/dev/null || true)" = ""
 
-mkdir "$test_root/bin"
+mkdir "$test_root/bin" "$test_root/remotes" "$test_root/gh-state"
 cat > "$test_root/bin/gh" <<'EOF'
 #!/bin/sh
-if [ "$1" = repo ] && [ "$2" = view ] && [ "$3" = test-user/my-app ]; then
-  exit 1
+if [ "$1" = repo ] && [ "$2" = view ]; then
+  name=${3#test-user/}
+  test -f "$FAKE_GH_STATE/$name" || exit 1
+  printf 'test-user/%s|https://github.com/test-user/%s\n' "$name" "$name"
+  exit 0
 fi
 if [ "$1" = repo ] && [ "$2" = create ]; then
+  name=$3
   case " $* " in
     *" --private "*) ;;
     *) exit 1 ;;
@@ -100,24 +104,73 @@ if [ "$1" = repo ] && [ "$2" = create ]; then
   for arg in "$@"; do
     case "$arg" in --source=*) root=${arg#--source=} ;; esac
   done
-  git -C "$root" remote add origin https://github.com/test-user/my-app.git
-  exit 0
-fi
-if [ "$1" = repo ] && [ "$2" = view ]; then
-  printf 'test-user/my-app https://github.com/test-user/my-app\n'
+  git init --bare --quiet "$FAKE_GH_REPOSITORIES/$name.git"
+  touch "$FAKE_GH_STATE/$name"
+  git -C "$root" remote add origin "https://github.com/test-user/$name.git"
+  if [ "$FAKE_GH_CREATE_PUSH_FAIL" = 1 ]; then
+    exit 1
+  fi
+  git -C "$root" push --quiet origin participant-work:participant-work
   exit 0
 fi
 exit 1
 EOF
 chmod +x "$test_root/bin/gh"
 PATH="$test_root/bin:$PATH"
+export FAKE_GH_REPOSITORIES="$test_root/remotes" FAKE_GH_STATE="$test_root/gh-state"
+configure_fake_github() {
+  git -C "$1" config url."file://$test_root/remotes/".insteadOf https://github.com/test-user/
+}
 GITHUB_VERIFIED=true
 GH_USER=test-user
 VIBE_SETUP_ASSUME_YES=1
+configure_fake_github "$root"
 create_participant_repository "$root" my-app
-test "$(git -C "$root" remote get-url origin)" = https://github.com/test-user/my-app.git
+test "$(git -C "$root" config --get remote.origin.url)" = https://github.com/test-user/my-app.git
+test "$(git -C "$root" ls-remote --heads origin refs/heads/participant-work | awk 'NR == 1 { print $1 }')" = "$(git -C "$root" rev-parse participant-work)"
 test "$(git -C "$root" remote get-url template)" = "$TEMPLATE_REPOSITORY"
 test "$(git -C "$root" remote get-url --push template)" = DISABLED
+
+# If GitHub creates the repository but its initial --push fails, origin and the
+# marker survive; the installer completes the safe branch push without a
+# duplicate repository. A rerun reconnects an absent local origin from that
+# recorded participant-owned repository.
+partial="$test_root/Documents/src/partial-app"
+copy_template_worktree "$partial" absent
+initialize_participant_repository "$partial"
+configure_fake_github "$partial"
+FAKE_GH_CREATE_PUSH_FAIL=1 create_participant_repository "$partial" partial-app
+test "$(git -C "$partial" config --get remote.origin.url)" = https://github.com/test-user/partial-app.git
+test -f "$partial/.git/vibe-participant-repository"
+test "$(git -C "$partial" ls-remote --heads origin refs/heads/participant-work | awk 'NR == 1 { print $1 }')" = "$(git -C "$partial" rev-parse participant-work)"
+git -C "$partial" remote remove origin
+create_participant_repository "$partial" partial-app
+test "$(git -C "$partial" config --get remote.origin.url)" = https://github.com/test-user/partial-app.git
+
+# A participant-owned remote branch with a different commit is never forced or
+# overwritten during a rerun.
+conflict="$test_root/Documents/src/conflict-app"
+copy_template_worktree "$conflict" absent
+initialize_participant_repository "$conflict"
+configure_fake_github "$conflict"
+git init --bare --quiet "$test_root/remotes/conflict-app.git"
+touch "$test_root/gh-state/conflict-app"
+git -C "$conflict" remote add origin https://github.com/test-user/conflict-app.git
+record_participant_repository "$conflict" conflict-app
+seed="$test_root/seed"
+git clone --quiet "$test_root/remotes/conflict-app.git" "$seed"
+git -C "$seed" config user.name Test
+git -C "$seed" config user.email test@example.invalid
+printf 'conflicting history\n' > "$seed/README.md"
+git -C "$seed" add README.md
+git -C "$seed" commit --quiet -m conflict
+git -C "$seed" push --quiet origin HEAD:participant-work
+remote_before=$(git -C "$conflict" ls-remote --heads origin refs/heads/participant-work | awk 'NR == 1 { print $1 }')
+if create_participant_repository "$conflict" conflict-app; then
+  echo "A conflicting participant-work branch was accepted." >&2
+  exit 1
+fi
+test "$(git -C "$conflict" ls-remote --heads origin refs/heads/participant-work | awk 'NR == 1 { print $1 }')" = "$remote_before"
 
 # An unrelated nonempty destination is classified without changing its data.
 unrelated="$test_root/Documents/src/existing"

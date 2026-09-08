@@ -26,7 +26,7 @@ test("the deployment skill is concise, Vercel-first, and resumable", () => {
 
 test("the deployment skill protects secrets and keeps one final mutation boundary", () => {
   assert.match(skill, /Never print, request, commit, or paste database URLs, auth secrets/i)
-  assert.match(skill, /Ask once: “Continue with the production\s+migration and deployment\?”/i)
+  assert.match(skill, /Ask once: “Continue with the production\s+migration and\s+deployment\?”/i)
   assert.match(skill, /Never use `prisma db\s+push`, reset, destructive SQL/i)
   assert.match(skill, /make no further provider or\s+database mutation/i)
   assert.match(skill, /npx --yes vercel@latest env run -e production -- npm\s+run db:migrate/i)
@@ -59,6 +59,12 @@ test("repository repair and rehearsal discovery are safe and recoverable", () =>
   assert.match(skill, /Never push to `TanookiLabs\/creator-ai-tools`/)
   assert.match(skill, /rename it to\s+`template`, set its push URL to `DISABLED`/i)
   assert.match(skill, /gh repo create <name> --private --source=\. --remote=origin --push/)
+  assert.match(skill, /explicit request to deploy authorizes this safe\s+private-repository setup/i)
+  assert.match(skill, /before Vercel discovery/i)
+  assert.match(skill, /remote `participant-work` resolves to the local\s+commit/i)
+  assert.match(skill, /creation succeeds but its first push fails, retain the origin/i)
+  assert.match(skill, /stop for a name\/owner choice or conflicting remote\s+branch/i)
+  assert.match(skill, /authorizes Vercel configuration, the\s+reviewed migration, and deployment only/i)
   assert.match(skill, /unchanged starter.*explicitly approved disposable rehearsal/i)
   assert.match(skill, /npx --yes vercel@latest --version/)
   assert.match(skill, /Do not restart or stop local development servers during discovery/i)

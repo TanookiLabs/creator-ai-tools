@@ -12,9 +12,11 @@ provider agreement or plan selection, and one final production confirmation.
 A template `origin`, absent participant repository, or absent Vercel CLI is
 repairable. The assistant never pushes to the template: it makes it a
 fetch-only `template` remote, then can create a private participant `origin`
-after the final confirmation. It uses `npx --yes vercel@latest`, so no global
-CLI installation is needed. An unchanged starter is a warning, not a blocker,
-for an explicitly approved disposable rehearsal.
+before Vercel discovery when the participant explicitly requests deployment.
+It verifies the owner and remote `participant-work` commit without overwriting
+a conflicting branch. It uses `npx --yes vercel@latest`, so no global CLI
+installation is needed. An unchanged starter is a warning, not a blocker, for
+an explicitly approved disposable rehearsal.
 
 Vercel Marketplace is the normal way to reuse or connect Postgres. Existing
 projects, integrations, and healthy auth secrets are reused. The assistant

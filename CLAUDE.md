@@ -54,7 +54,9 @@ terms/plan choices, and one final displayed production summary. Builds remain
 non-mutating; apply reviewed migrations once using the direct production
 connection, then deploy and observe HTTPS, database, and Better Auth smoke
 checks. A template origin or missing participant repository is repairable only
-under that final confirmation; never push to Creator AI Tools. Use ephemeral
+when the participant explicitly requests deployment and is completed before
+Vercel discovery; never push to Creator AI Tools. The final confirmation covers
+Vercel configuration, migration, and deployment. Use ephemeral
 `npx --yes vercel@latest` commands and do not restart local dev servers during
 discovery. Do not add public deployment scripts, daemons, launchers, credential
 helpers, permission bypasses, or user-facing npm deployment commands.
