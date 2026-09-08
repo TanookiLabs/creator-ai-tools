@@ -29,8 +29,9 @@ test("the deployment skill protects secrets and keeps one final mutation boundar
   assert.match(skill, /Ask once: “Continue with the production\s+migration and\s+deployment\?”/i)
   assert.match(skill, /Never use `prisma db\s+push`, reset, destructive SQL/i)
   assert.match(skill, /make no further provider or\s+database mutation/i)
-  assert.match(skill, /npx --yes vercel@latest env run -e production -- npm\s+run db:migrate/i)
-  assert.match(skill, /rehearsal assumption/i)
+  assert.match(skill, /run-production-migration\.sh/)
+  assert.doesNotMatch(skill, /clear local .* from `npx --yes vercel@latest env run/i)
+  assert.match(skill, /live participant-owned\s+Vercel\/Neon rehearsal/i)
 })
 
 test("the Git-backed Vercel monitor stops on every terminal provider state", () => {
@@ -39,6 +40,15 @@ test("the Git-backed Vercel monitor stops on every terminal provider state", () 
   assert.match(skill, /provider reason/i)
   assert.match(skill, /stop without retry/i)
   assert.match(skill, /without filtering live errors/i)
+})
+
+test("production migration always uses the dotenv-isolating skill wrapper", () => {
+  assert.match(skill, /SKILL_DIR[\s\S]*run-production-migration\.sh/)
+  assert.match(documents["docs/prisma-migrations.md"], /SKILL_DIR[\s\S]*run-production-migration\.sh/)
+  for (const contents of [skill, documents["docs/prisma-migrations.md"]]) {
+    assert.doesNotMatch(contents, /disposable rehearsal|unverified.*rehearsal/i)
+    assert.doesNotMatch(contents, /env -u DATABASE_URL[\s\S]*vercel@latest env run/i)
+  }
 })
 
 test("every relevant document keeps the workflow experimental and one-confirmation only", () => {
@@ -73,7 +83,7 @@ test("repository repair and rehearsal discovery are safe and recoverable", () =>
   assert.match(skill, /creation succeeds but its first push fails, retain the origin/i)
   assert.match(skill, /stop for a name\/owner choice or conflicting remote\s+branch/i)
   assert.match(skill, /authorizes Vercel configuration, the\s+reviewed migration, and deployment only/i)
-  assert.match(skill, /unchanged starter.*explicitly approved disposable rehearsal/i)
+  assert.match(skill, /unchanged starter.*explicitly approved production run/i)
   assert.match(skill, /npx --yes vercel@latest --version/)
   assert.match(skill, /Do not restart or stop local development servers during discovery/i)
 })

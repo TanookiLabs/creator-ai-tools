@@ -39,13 +39,14 @@ production execution.
 
 The migration boundary is deliberately narrow. Review the committed migration
 SQL, validate configuration, verify no schema drift, identify a named backup
-and recovery owner, and retain disposable rehearsal evidence. Include the
-migration in the single final production summary and confirmation. Run the
-selected Vercel production environment with local `.env` and `.env.local`
-values unavailable, so they cannot override the production variables:
+and recovery owner, and retain the live rehearsal evidence. Include the
+migration in the single final production summary and confirmation. Resolve
+`SKILL_DIR` to `.claude/skills/deploy-production` and use its wrapper with the
+project root as the first argument; it makes local `.env` and `.env.local`
+unavailable and restores them on every exit:
 
 ```bash
-env -u DATABASE_URL -u DIRECT_URL -u BETTER_AUTH_URL -u BETTER_AUTH_SECRET \
+bash "$SKILL_DIR/run-production-migration.sh" "$PROJECT_ROOT" \
   npx --yes vercel@latest env run -e production -- npm run db:migrate
 ```
 

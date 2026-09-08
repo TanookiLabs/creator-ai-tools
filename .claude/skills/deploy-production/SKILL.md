@@ -17,7 +17,7 @@ At the beginning of every invocation, rediscover Git root, branch, commit, worki
 
 Classify findings clearly: a template `origin`, missing participant repository,
 or missing Vercel CLI are repairable; an unchanged starter is a warning for an
-explicitly approved disposable rehearsal; Vercel login and Marketplace terms or
+explicitly approved production run; Vercel login and Marketplace terms or
 plan choices require participant action. Stop only for unexplained dirty work,
 a conflicting repository/name, ambiguous ownership, secret mapping ambiguity,
 or a failed migration.
@@ -55,7 +55,7 @@ verified canonical HTTPS production origin belonging to the selected project.
 
 ## Validate, confirm, mutate
 
-Run focused tests, lint, type checking, Prisma validation with safe injected configuration, and build checks appropriate to the change. Use the ephemeral CLI as `npx --yes vercel@latest ...`; do not add a dependency or globally install it. Record the resolved `npx --yes vercel@latest --version` result in the rehearsal report. Confirm migration files are committed and determine pending migrations without changing schema. Warn “This appears to be an unchanged starter application” when applicable; include it in the final summary, but continue an explicitly approved disposable rehearsal.
+Run focused tests, lint, type checking, Prisma validation with safe injected configuration, and build checks appropriate to the change. Use the ephemeral CLI as `npx --yes vercel@latest ...`; do not add a dependency or globally install it. Record the resolved `npx --yes vercel@latest --version` result in the rehearsal report. Confirm migration files are committed and determine pending migrations without changing schema. Warn “This appears to be an unchanged starter application” when applicable; include it in the final summary, but continue an explicitly approved production run.
 
 Before Vercel mutations, show one concise non-secret summary: verified
 participant repository and commit, Vercel project, Postgres integration,
@@ -66,8 +66,7 @@ reviewed migration, and deployment only.
 
 After confirmation, verify Vercel production tracks `main` and that its GitHub
 commit author is associated with the Vercel user. Reconcile schema state, then
-run the reviewed migration once through the selected Vercel production environment (the rehearsal assumption is the Vercel production environment);
-clear local `.env` and `.env.local` from `npx --yes vercel@latest env run -e production -- npm run db:migrate` so they cannot override production variables. Do not print, export, or copy production values while
+run the reviewed migration once through the selected Vercel production environment. Resolve `SKILL_DIR` to the directory containing this skill, then run `bash "$SKILL_DIR/run-production-migration.sh" "$PROJECT_ROOT" npx --yes vercel@latest env run -e production -- npm run db:migrate`. The wrapper requires the project root followed by the command, hides local `.env` and `.env.local`, and restores them on exit. Do not print, export, or copy production values while
 running it. Trigger one Git-backed production deployment and wait only for a
 bounded interval. `READY`, `ERROR`, `CANCELED`, and `BLOCKED` are terminal;
 on any non-READY state stop without retry and report the deployment ID,
