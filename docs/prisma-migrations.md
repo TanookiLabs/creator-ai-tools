@@ -40,12 +40,13 @@ production execution.
 The migration boundary is deliberately narrow. Review the committed migration
 SQL, validate configuration, verify no schema drift, identify a named backup
 and recovery owner, and retain disposable rehearsal evidence. Include the
-migration in the single final production summary and confirmation. The current
-rehearsal assumption is to inject the selected Vercel project's production
-environment directly into the reviewed command:
+migration in the single final production summary and confirmation. Run the
+selected Vercel production environment with local `.env` and `.env.local`
+values unavailable, so they cannot override the production variables:
 
 ```bash
-npx --yes vercel@latest env run -e production -- npm run db:migrate
+env -u DATABASE_URL -u DIRECT_URL -u BETTER_AUTH_URL -u BETTER_AUTH_SECRET \
+  npx --yes vercel@latest env run -e production -- npm run db:migrate
 ```
 
 This exact CLI behavior is unverified until the disposable rehearsal; do not

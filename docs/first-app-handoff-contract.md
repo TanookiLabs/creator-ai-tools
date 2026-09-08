@@ -12,7 +12,7 @@ folder access, permission prompts, and any repair remain participant-controlled.
 Setup is downloaded from the repository's `main` branch. Once Git is available,
 the installer resolves `origin/main` exactly once, retrieves that source commit,
 copies its working files without `.git`, and initializes an independent
-`participant-work` repository. The template is retained only as a fetch-only
+`main` repository. The template is retained only as a fetch-only
 `template` remote with its push URL disabled. The downloaded script is
 identified by its SHA-256 digest; it does not claim an independently verified
 Git commit.

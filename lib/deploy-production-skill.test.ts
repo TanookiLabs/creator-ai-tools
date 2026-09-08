@@ -61,7 +61,7 @@ test("repository repair and rehearsal discovery are safe and recoverable", () =>
   assert.match(skill, /gh repo create <name> --private --source=\. --remote=origin --push/)
   assert.match(skill, /explicit request to deploy authorizes this safe\s+private-repository setup/i)
   assert.match(skill, /before Vercel discovery/i)
-  assert.match(skill, /remote `participant-work` resolves to the local\s+commit/i)
+  assert.match(skill, /remote `main` resolves to the local\s+commit/i)
   assert.match(skill, /creation succeeds but its first push fails, retain the origin/i)
   assert.match(skill, /stop for a name\/owner choice or conflicting remote\s+branch/i)
   assert.match(skill, /authorizes Vercel configuration, the\s+reviewed migration, and deployment only/i)

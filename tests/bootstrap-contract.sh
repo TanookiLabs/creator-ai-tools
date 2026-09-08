@@ -29,7 +29,7 @@ TEMPLATE_REPOSITORY="https://github.com/TanookiLabs/creator-ai-tools"
 INSTALLED_TEMPLATE_COMMIT=$(git -C "$project" rev-parse HEAD)
 git -C "$project" commit --allow-empty --quiet -m 'Initialize project from Creator AI Tools'
 APPLICATION_COMMIT=$(git -C "$project" rev-parse HEAD)
-git -C "$project" branch -M participant-work
+git -C "$project" branch -M main
 git -C "$project" remote add template "$TEMPLATE_REPOSITORY"
 git -C "$project" remote set-url --push template DISABLED
 printf '%s\n%s\n' "$TEMPLATE_REPOSITORY" "$INSTALLED_TEMPLATE_COMMIT" > "$project/.git/vibe-template-provenance"
@@ -105,11 +105,11 @@ test -f "$receipt.tmp-interrupted"
 
 # The GitHub CLI writes an origin ending in .git. A verified marker carries
 # the canonical URL, and receipt production treats the two forms as one
-# identity after participant-work has been observed remotely.
+# identity after main has been observed remotely.
 git init --bare --quiet "$test_root/participant-remote.git"
 git -C "$project" remote add origin https://github.com/test-user/my-first-app.git
 git -C "$project" config url."file://$test_root/participant-remote.git".insteadOf https://github.com/test-user/my-first-app.git
-git -C "$project" push --quiet origin participant-work:participant-work
+git -C "$project" push --quiet origin main:main
 printf 'test-user/my-first-app\nhttps://github.com/test-user/my-first-app\n' > "$project/.git/vibe-participant-repository"
 produce_first_app_contract >/dev/null
 node -e 'const r=require(process.argv[1]); if (r.application.repository !== "https://github.com/test-user/my-first-app") throw new Error("Canonical participant repository was not used for receipt identity")' "$receipt"

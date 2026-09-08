@@ -297,8 +297,8 @@ produce_first_app_contract() {
   if [[ -f "$PROJECT_ROOT/.git/vibe-participant-repository" ]]; then
     marker_repository=$(canonical_https_repository_url "$(sed -n '2p' "$PROJECT_ROOT/.git/vibe-participant-repository")" 2>/dev/null || true)
     origin_repository=$(canonical_https_repository_url "$(git -C "$PROJECT_ROOT" config --get remote.origin.url 2>/dev/null || true)" 2>/dev/null || true)
-    local_commit=$(git -C "$PROJECT_ROOT" rev-parse participant-work 2>/dev/null || true)
-    remote_commit=$(git -C "$PROJECT_ROOT" ls-remote --heads origin refs/heads/participant-work 2>/dev/null | awk 'NR == 1 { print $1 }')
+    local_commit=$(git -C "$PROJECT_ROOT" rev-parse main 2>/dev/null || true)
+    remote_commit=$(git -C "$PROJECT_ROOT" ls-remote --heads origin refs/heads/main 2>/dev/null | awk 'NR == 1 { print $1 }')
     if [[ -n "$marker_repository" && "$marker_repository" == "$origin_repository" && "$remote_commit" == "$local_commit" ]]; then
       application_repository="$marker_repository"
     fi
@@ -1110,8 +1110,10 @@ GH_USER=""
 GH_NAME=""
 GH_PRIMARY_EMAIL=""
 GH_ALL_EMAILS=""
+GH_USER_ID=""
 if [[ "$GITHUB_VERIFIED" == "true" ]]; then
-  GH_USER=$(gh api user --jq '.login' 2>/dev/null || echo "")
+  GH_IDENTITY=$(gh api user --jq '[.id, .login] | @tsv' 2>/dev/null || true)
+  IFS=$'\t' read -r GH_USER_ID GH_USER <<< "$GH_IDENTITY"
   GH_NAME=$(gh api user --jq '.name // empty' 2>/dev/null || echo "")
   GH_PRIMARY_EMAIL=$(gh api user/emails --jq '.[] | select(.primary==true) | .email' 2>/dev/null || echo "")
   GH_ALL_EMAILS=$(gh api user/emails --jq '.[].email' 2>/dev/null || echo "")
@@ -1120,13 +1122,37 @@ fi
 echo ""
 [[ -n "$GH_USER" ]] && ok "GitHub user: $GH_USER"
 [[ -n "$GH_NAME" ]] && ok "Display name: $GH_NAME"
-[[ -n "$GH_PRIMARY_EMAIL" ]] && ok "Primary email: $GH_PRIMARY_EMAIL"
 
 # ═════════════════════════════════════════════════════════════════
 # Step 5: Git identity
 # ═════════════════════════════════════════════════════════════════
 
 header "Git identity"
+
+valid_git_email() {
+  [[ "$1" =~ ^[A-Za-z0-9.!#$%\&\'*+/=?^_\`{|}~-]+@[A-Za-z0-9.-]+\.[A-Za-z0-9-]+$ ]] &&
+    [[ "$1" != *$'\n'* && "$1" != *$'\r'* ]]
+}
+
+configure_github_git_identity() {
+  local existing managed candidate identity
+  existing=$(git config --global --get user.email 2>/dev/null || true)
+  managed=$(git config --global --get vibe-coding-setup.managed-email 2>/dev/null || true)
+  if [[ -n "$existing" ]] && valid_git_email "$existing" && [[ "$managed" != "true" ]]; then
+    GIT_EMAIL="$existing"
+    return 0
+  fi
+  if [[ "$GITHUB_VERIFIED" != "true" || ! "$GH_USER_ID" =~ ^[0-9]+$ || ! "$GH_USER" =~ ^[A-Za-z0-9-]+$ ]]; then
+    fail "GitHub identity is unavailable. Sign in with gh auth login, then rerun setup before creating commits."
+    return 1
+  fi
+  candidate=$(gh api user/emails --jq '.[] | select(.primary == true) | .email' 2>/dev/null | head -n 1 || true)
+  if ! valid_git_email "$candidate"; then candidate="${GH_USER_ID}+${GH_USER}@users.noreply.github.com"; fi
+  valid_git_email "$candidate" || { fail "Git identity email is invalid. Sign in to GitHub and rerun setup."; return 1; }
+  git config --global user.email "$candidate"
+  git config --global vibe-coding-setup.managed-email true
+  GIT_EMAIL="$candidate"
+}
 
 GIT_NAME=$(git config --global user.name 2>/dev/null || echo "")
 
@@ -1142,29 +1168,12 @@ else
   fi
 fi
 
-GIT_EMAIL=$(git config --global user.email 2>/dev/null || echo "")
-
-if [[ -n "$GIT_EMAIL" ]]; then
-  ok "Git email: $GIT_EMAIL"
-  if [[ -n "$GH_ALL_EMAILS" ]] && ! echo "$GH_ALL_EMAILS" | grep -qiF "$GIT_EMAIL"; then
-    warn "This email is not in your GitHub account. Your commits will"
-    warn "not connect to your GitHub profile. Claude can repair this later."
-  fi
-else
-  if [[ "$GITHUB_VERIFIED" != "true" ]]; then
-    warn "Git email is not configured. Configure it after GitHub is verified."
-  elif [[ -n "$GH_PRIMARY_EMAIL" ]]; then
-    GIT_EMAIL="$GH_PRIMARY_EMAIL"
-  elif [[ -n "$GH_ALL_EMAILS" ]]; then
-    GIT_EMAIL=$(echo "$GH_ALL_EMAILS" | head -1)
-  else
-    GIT_EMAIL="$GH_USER@users.noreply.github.com"
-  fi
-  if [[ -n "$GIT_EMAIL" ]]; then
-    git config --global user.email "$GIT_EMAIL"
-    ok "Git email set from GitHub: $GIT_EMAIL"
-  fi
+if ! configure_github_git_identity; then exit 1; fi
+if ! git var GIT_AUTHOR_IDENT >/dev/null 2>&1; then
+  fail "Git cannot form a valid author identity. Configure Git identity and rerun setup."
+  exit 1
 fi
+ok "Git email configured"
 
 git config --global init.defaultBranch main 2>/dev/null || true
 
@@ -1371,7 +1380,7 @@ copy_template_worktree() {
 
 initialize_participant_repository() {
   local root="$1"
-  git -C "$root" init --quiet -b participant-work
+  git -C "$root" init --quiet -b main
   git -C "$root" add .
   git -C "$root" commit --quiet -m "Initialize project from Creator AI Tools"
   git -C "$root" remote add template "$TEMPLATE_REPOSITORY"
@@ -1434,19 +1443,23 @@ ensure_participant_branch_remote() {
     fail "The existing origin is not the authenticated participant's expected repository. It was not changed."
     return 1
   fi
-  local_commit=$(git -C "$root" rev-parse participant-work)
-  remote_commit=$(git -C "$root" ls-remote --heads origin refs/heads/participant-work | awk 'NR == 1 { print $1 }')
+  local_commit=$(git -C "$root" rev-parse main)
+  remote_commit=$(git -C "$root" ls-remote --heads origin refs/heads/main | awk 'NR == 1 { print $1 }')
   if [[ -z "$remote_commit" ]]; then
-    if ! git -C "$root" push origin participant-work:participant-work; then
-      warn "The private repository exists and origin is preserved, but participant-work was not pushed. Rerun setup after resolving the GitHub push failure."
+    if ! git -C "$root" push origin main:main; then
+      warn "The private repository exists and origin is preserved, but main was not pushed. Rerun setup after resolving the GitHub push failure."
       return 0
     fi
-    remote_commit=$(git -C "$root" ls-remote --heads origin refs/heads/participant-work | awk 'NR == 1 { print $1 }')
+    remote_commit=$(git -C "$root" ls-remote --heads origin refs/heads/main | awk 'NR == 1 { print $1 }')
   fi
   if [[ "$remote_commit" != "$local_commit" ]]; then
-    fail "The remote participant-work branch differs from this local commit. It was not overwritten."
+    fail "The remote main branch differs from this local commit. It was not overwritten."
     return 1
   fi
+  gh api -X PATCH "repos/$GH_USER/$project_name" -f default_branch=main >/dev/null 2>&1 || {
+    fail "The participant repository main branch was pushed, but GitHub could not set it as the default branch. Set main as the default branch in GitHub, then rerun setup."
+    return 1
+  }
   record_participant_repository "$root" "$project_name"
   ok "Private participant repository: $GH_USER/$project_name https://github.com/$GH_USER/$project_name"
 }
@@ -1474,7 +1487,7 @@ create_participant_repository() {
     ensure_participant_branch_remote "$root" "$project_name"
     return
   fi
-  if [[ "${VIBE_SETUP_ASSUME_YES:-0}" != "1" ]] && ! confirm "Create private GitHub repository $GH_USER/$project_name and push participant-work?"; then
+  if [[ "${VIBE_SETUP_ASSUME_YES:-0}" != "1" ]] && ! confirm "Create private GitHub repository $GH_USER/$project_name and push main?"; then
     warn "Private GitHub repository creation was skipped. The deployment skill can create one later."
     return 0
   fi

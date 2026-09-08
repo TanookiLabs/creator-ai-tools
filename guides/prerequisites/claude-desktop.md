@@ -2,7 +2,7 @@
 
 Claude Desktop Code is the primary interface for this macOS onboarding release.
 The bootstrap copies the pinned template source into an independent
-`participant-work` repository before Desktop opens. Your project remains on
+`main` repository before Desktop opens. Your project remains on
 disk if Desktop is unavailable or folder selection is not completed.
 
 Gatekeeper approval, Desktop sign-in and Code eligibility, exact-folder

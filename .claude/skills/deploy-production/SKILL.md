@@ -5,8 +5,8 @@ description: Experimentally deploy this Next.js application to a participant-con
 
 # Experimental Vercel deployment
 
-This is an experimental, assistant-led production workflow. It is not a
-promise that a provider integration or CLI flow has been rehearsed successfully.
+This is an assistant-led Vercel workflow rehearsed on participant-owned
+resources. The canonical path is local `main` → GitHub `main` → Vercel production.
 The participant can start with “Deploy this application to Vercel” or
 `/deploy-production`; they do not run a repository deployment command or copy
 database URLs or secret values into chat.
@@ -27,8 +27,10 @@ Never push to `TanookiLabs/creator-ai-tools`. If it is `origin`, rename it to
 private repository with `gh repo create <name> --private --source=. --remote=origin --push`
 before Vercel discovery. The explicit request to deploy authorizes this safe
 private-repository setup; do not ask a second repository confirmation. Verify
-the known owner/URL and that remote `participant-work` resolves to the local
-commit. If creation succeeds but its first push fails, retain the origin and
+the known owner/URL and that remote `main` resolves to the local
+commit and make `main` the GitHub default branch. Existing installer projects
+on an old branch may be migrated deliberately; never delete their old remote
+branch automatically. If creation succeeds but its first push fails, retain the origin and
 resume the absent branch safely on rerun. Do not overwrite, repoint, or infer
 an occupied repository; stop for a name/owner choice or conflicting remote
 branch. A read-only `template` remote is allowed. If participant history might
@@ -62,12 +64,14 @@ migration status. Ask once: “Continue with the production migration and
 deployment?” A general affirmative answer authorizes Vercel configuration, the
 reviewed migration, and deployment only.
 
-After confirmation, run the reviewed migration once through the selected
-Vercel project's production environment, then deploy the reviewed commit. The
-rehearsal assumption is `npx --yes vercel@latest env run -e production -- npm
-run db:migrate`; verify that exact CLI behavior during the disposable rehearsal
-before treating it as supported. Do not print, export, or copy production
-values while running it. Never use `prisma db push`, reset, destructive SQL,
+After confirmation, verify Vercel production tracks `main` and that its GitHub
+commit author is associated with the Vercel user. Reconcile schema state, then
+run the reviewed migration once through the selected Vercel production environment (the rehearsal assumption is the Vercel production environment);
+clear local `.env` and `.env.local` from `npx --yes vercel@latest env run -e production -- npm run db:migrate` so they cannot override production variables. Do not print, export, or copy production values while
+running it. Trigger one Git-backed production deployment and wait only for a
+bounded interval. `READY`, `ERROR`, `CANCELED`, and `BLOCKED` are terminal;
+on any non-READY state stop without retry and report the deployment ID,
+dashboard URL, and provider reason without filtering live errors. Never use `prisma db push`, reset, destructive SQL,
 migration generation, forced deployment flags, or a retry/improvised repair
 after migration failure.
 

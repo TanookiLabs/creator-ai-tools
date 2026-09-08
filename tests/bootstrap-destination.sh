@@ -60,12 +60,12 @@ initialize_participant_repository "$root"
 test "$(destination_state "$root")" = complete
 template_markers_are_valid "$root"
 grep -F 'Use this current README.' "$root/README.md" >/dev/null
-test "$(git -C "$root" symbolic-ref --short HEAD)" = participant-work
+test "$(git -C "$root" symbolic-ref --short HEAD)" = main
 test "$(git -C "$root" rev-list --count HEAD)" -eq 1
 test "$(git -C "$root" remote get-url origin 2>/dev/null || true)" = ""
 test "$(git -C "$root" remote get-url template)" = "$TEMPLATE_REPOSITORY"
 test "$(git -C "$root" remote get-url --push template)" = DISABLED
-if git -C "$root" push template participant-work >/dev/null 2>&1; then
+if git -C "$root" push template main >/dev/null 2>&1; then
   echo "The template remote accepted a participant push." >&2
   exit 1
 fi
@@ -120,6 +120,9 @@ test "$(git -C "$root" remote get-url origin 2>/dev/null || true)" = ""
 mkdir "$test_root/bin" "$test_root/remotes" "$test_root/gh-state"
 cat > "$test_root/bin/gh" <<'EOF'
 #!/bin/sh
+if [ "$1" = api ]; then
+  exit 0
+fi
 if [ "$1" = repo ] && [ "$2" = view ]; then
   name=${3#test-user/}
   test -f "$FAKE_GH_STATE/$name" || exit 1
@@ -153,7 +156,7 @@ if [ "$1" = repo ] && [ "$2" = create ]; then
   if [ "$FAKE_GH_CREATE_PUSH_FAIL" = 1 ]; then
     exit 1
   fi
-  git -C "$root" push --quiet origin participant-work:participant-work
+  git -C "$root" push --quiet origin main:main
   exit 0
 fi
 exit 1
@@ -171,7 +174,7 @@ configure_fake_github "$root"
 create_participant_repository "$root" my-app
 test "$(git -C "$root" config --get remote.origin.url)" = https://github.com/test-user/my-app.git
 test "$(sed -n '2p' "$root/.git/vibe-participant-repository")" = https://github.com/test-user/my-app
-test "$(git -C "$root" ls-remote --heads origin refs/heads/participant-work | awk 'NR == 1 { print $1 }')" = "$(git -C "$root" rev-parse participant-work)"
+test "$(git -C "$root" ls-remote --heads origin refs/heads/main | awk 'NR == 1 { print $1 }')" = "$(git -C "$root" rev-parse main)"
 test "$(git -C "$root" remote get-url template)" = "$TEMPLATE_REPOSITORY"
 test "$(git -C "$root" remote get-url --push template)" = DISABLED
 
@@ -186,7 +189,7 @@ configure_fake_github "$partial"
 FAKE_GH_CREATE_PUSH_FAIL=1 create_participant_repository "$partial" partial-app
 test "$(git -C "$partial" config --get remote.origin.url)" = https://github.com/test-user/partial-app.git
 test -f "$partial/.git/vibe-participant-repository"
-test "$(git -C "$partial" ls-remote --heads origin refs/heads/participant-work | awk 'NR == 1 { print $1 }')" = "$(git -C "$partial" rev-parse participant-work)"
+test "$(git -C "$partial" ls-remote --heads origin refs/heads/main | awk 'NR == 1 { print $1 }')" = "$(git -C "$partial" rev-parse main)"
 git -C "$partial" remote remove origin
 create_participant_repository "$partial" partial-app
 test "$(git -C "$partial" config --get remote.origin.url)" = https://github.com/test-user/partial-app.git
@@ -218,13 +221,13 @@ git -C "$seed" config user.email test@example.invalid
 printf 'conflicting history\n' > "$seed/README.md"
 git -C "$seed" add README.md
 git -C "$seed" commit --quiet -m conflict
-git -C "$seed" push --quiet origin HEAD:participant-work
-remote_before=$(git -C "$conflict" ls-remote --heads origin refs/heads/participant-work | awk 'NR == 1 { print $1 }')
+git -C "$seed" push --quiet origin HEAD:main
+remote_before=$(git -C "$conflict" ls-remote --heads origin refs/heads/main | awk 'NR == 1 { print $1 }')
 if create_participant_repository "$conflict" conflict-app; then
-  echo "A conflicting participant-work branch was accepted." >&2
+  echo "A conflicting main branch was accepted." >&2
   exit 1
 fi
-test "$(git -C "$conflict" ls-remote --heads origin refs/heads/participant-work | awk 'NR == 1 { print $1 }')" = "$remote_before"
+test "$(git -C "$conflict" ls-remote --heads origin refs/heads/main | awk 'NR == 1 { print $1 }')" = "$remote_before"
 
 # An unrelated nonempty destination is classified without changing its data.
 unrelated="$test_root/Documents/src/existing"
@@ -241,7 +244,7 @@ git clone --quiet "$TEMPLATE_REPOSITORY" "$legacy"
 git -C "$legacy" checkout --quiet --detach "$CURRENT_TEMPLATE_COMMIT"
 test "$(destination_state "$legacy")" = legacy
 convert_legacy_template_checkout "$legacy"
-test "$(git -C "$legacy" symbolic-ref --short HEAD)" = participant-work
+test "$(git -C "$legacy" symbolic-ref --short HEAD)" = main
 test "$(git -C "$legacy" rev-list --count HEAD)" -eq 1
 test "$(git -C "$legacy" remote get-url origin 2>/dev/null || true)" = ""
 test "$(git -C "$legacy" remote get-url template)" = "$TEMPLATE_REPOSITORY"
