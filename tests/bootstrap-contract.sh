@@ -26,13 +26,14 @@ git -C "$project" add .
 git -C "$project" commit --quiet -m template
 
 TEMPLATE_REPOSITORY="https://github.com/TanookiLabs/creator-ai-tools"
-TEMPLATE_COMMIT=$(git -C "$project" rev-parse HEAD)
+INSTALLED_TEMPLATE_COMMIT=$(git -C "$project" rev-parse HEAD)
 git -C "$project" commit --allow-empty --quiet -m 'Initialize project from Creator AI Tools'
 APPLICATION_COMMIT=$(git -C "$project" rev-parse HEAD)
 git -C "$project" branch -M participant-work
 git -C "$project" remote add template "$TEMPLATE_REPOSITORY"
 git -C "$project" remote set-url --push template DISABLED
-printf '%s\n%s\n' "$TEMPLATE_REPOSITORY" "$TEMPLATE_COMMIT" > "$project/.git/vibe-template-provenance"
+printf '%s\n%s\n' "$TEMPLATE_REPOSITORY" "$INSTALLED_TEMPLATE_COMMIT" > "$project/.git/vibe-template-provenance"
+CURRENT_TEMPLATE_COMMIT=dcf386f480971ee2b295274ba3dbb97a0e996327
 PROJECT_ROOT=$(cd "$project" && pwd -P)
 CONTRACT_VERSION=1.0
 RUN_STARTED_AT=2026-09-06T12:00:00Z
@@ -66,7 +67,7 @@ grep -F '"contract_version": "1.0"' "$receipt" >/dev/null
 grep -F "\"root\": \"$PROJECT_ROOT\"" "$receipt" >/dev/null
 grep -F "\"commit\": \"$APPLICATION_COMMIT\"" "$receipt" >/dev/null
 grep -F '"source_branch": "main"' "$receipt" >/dev/null
-node -e 'const r=require(process.argv[1]); if (r.application.repository !== "local-only" || r.provenance.bootstrap.commit || r.provenance.bootstrap.source_branch !== "main" || r.provenance.template.source_branch !== "main" || r.provenance.template.commit !== process.argv[2] || r.application.commit !== process.argv[3]) throw new Error("participant repository provenance is inaccurate")' "$receipt" "$TEMPLATE_COMMIT" "$APPLICATION_COMMIT"
+node -e 'const r=require(process.argv[1]); if (r.application.repository !== "local-only" || r.provenance.bootstrap.commit || r.provenance.bootstrap.source_branch !== "main" || r.provenance.template.source_branch !== "main" || r.provenance.template.commit !== process.argv[2] || r.application.commit !== process.argv[3]) throw new Error("participant repository provenance is inaccurate")' "$receipt" "$INSTALLED_TEMPLATE_COMMIT" "$APPLICATION_COMMIT"
 grep -F '"status": "success"' "$receipt" >/dev/null
 grep -F '"blocking": false' "$receipt" >/dev/null
 grep -F '"evidence_code": "folder_selection_unverified"' "$receipt" >/dev/null
@@ -144,13 +145,13 @@ if produce_first_app_contract >"$test_root/rejected-branch.out" 2>&1; then
   exit 1
 fi
 SOURCE_BRANCH=main
-wrong_commit="$TEMPLATE_COMMIT"
-TEMPLATE_COMMIT=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+wrong_commit="$INSTALLED_TEMPLATE_COMMIT"
+INSTALLED_TEMPLATE_COMMIT=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
 if produce_first_app_contract >"$test_root/rejected.out" 2>&1; then
   echo "A mismatched checkout was accepted." >&2
   exit 1
 fi
-TEMPLATE_COMMIT="$wrong_commit"
+INSTALLED_TEMPLATE_COMMIT="$wrong_commit"
 ! grep -F 'ghp_fixture_secret_value' "$test_root/rejected-branch.out" "$test_root/rejected.out" >/dev/null
 
 git -C "$project" check-ignore -q FIRST_APP_HANDOFF.md

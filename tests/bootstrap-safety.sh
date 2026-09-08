@@ -48,7 +48,7 @@ test "$last_profile_change_line" -lt "$gui_verification_line"
 grep -F 'curl -fsSL https://raw.githubusercontent.com/TanookiLabs/creator-ai-tools/main/setup.sh -o /tmp/creator-ai-setup.sh && /bin/bash /tmp/creator-ai-setup.sh' "$readme" >/dev/null
 grep -F 'resolve_main_commit() {' "$setup" >/dev/null
 grep -F 'refs/heads/${SOURCE_BRANCH}' "$setup" >/dev/null
-grep -F 'Pinned starter template to ${TEMPLATE_COMMIT} from ${SOURCE_BRANCH}' "$setup" >/dev/null
+grep -F 'Current template commit available: ${CURRENT_TEMPLATE_COMMIT} from ${SOURCE_BRANCH}' "$setup" >/dev/null
 if search_extended 'VIBE_SETUP_(INSTALLER|TEMPLATE)_COMMIT|bootstrap-v1\.1\.0-rc\.1|resolve_release_commit|source_mode|release_tag' "$setup" "$readme" "$repo_root/docs/first-app-handoff-contract.md"; then
   echo "Strict release-candidate mechanics remain in active bootstrap sources." >&2
   exit 1

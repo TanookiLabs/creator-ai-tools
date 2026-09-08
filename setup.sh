@@ -12,7 +12,8 @@ set -e
 SOURCE_BRANCH="main"
 ACTIVE_PHASE="startup validation"
 TEMPLATE_REPOSITORY="https://github.com/TanookiLabs/creator-ai-tools"
-TEMPLATE_COMMIT=""
+CURRENT_TEMPLATE_COMMIT=""
+INSTALLED_TEMPLATE_COMMIT=""
 CONTRACT_VERSION="1.0"
 RUN_STARTED_AT=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
 SHELL_CONFIGURATION_CHANGED=false
@@ -116,7 +117,7 @@ resolve_main_commit() {
   refs=$(git ls-remote "$TEMPLATE_REPOSITORY" "$main_ref") || return 1
   commit=$(printf '%s\n' "$refs" | awk -v ref="$main_ref" '$2 == ref { print $1; exit }')
   valid_full_commit "$commit" || return 1
-  TEMPLATE_COMMIT="$commit"
+  CURRENT_TEMPLATE_COMMIT="$commit"
 }
 
 append_profile() {
@@ -311,7 +312,7 @@ produce_first_app_contract() {
   RECEIPT_SOURCE_BRANCH="$SOURCE_BRANCH" \
   RECEIPT_INSTALLER_SHA256="$(shasum -a 256 "$0" | awk '{print $1}')" \
   RECEIPT_TEMPLATE_REPOSITORY="$TEMPLATE_REPOSITORY" \
-  RECEIPT_TEMPLATE_COMMIT="$TEMPLATE_COMMIT" \
+  RECEIPT_TEMPLATE_COMMIT="$INSTALLED_TEMPLATE_COMMIT" \
   RECEIPT_GIT_VERSION="$(git --version 2>/dev/null | sed 's/^git version //' || true)" \
   RECEIPT_NODE_VERSION="$(node --version 2>/dev/null | sed 's/^v//' || true)" \
   RECEIPT_NPM_VERSION="$(npm --version 2>/dev/null || true)" \
@@ -896,7 +897,7 @@ if ! resolve_main_commit; then
   fail "Could not resolve ${TEMPLATE_REPOSITORY} ${SOURCE_BRANCH}. Check your network connection and run setup again."
   exit 1
 fi
-ok "Pinned starter template to ${TEMPLATE_COMMIT} from ${SOURCE_BRANCH}"
+ok "Current template commit available: ${CURRENT_TEMPLATE_COMMIT} from ${SOURCE_BRANCH}"
 
 info "The script installs the libraries that Ruby and other tools need."
 brew_install_visible "the build libraries" libyaml gmp openssl@3 readline
@@ -1297,6 +1298,17 @@ template_markers_are_valid() {
      -f "$root/README.md" ]]
 }
 
+installed_template_commit() {
+  local root="$1" marker repository commit lines
+  marker="$root/.git/vibe-template-provenance"
+  [[ -f "$marker" ]] || return 1
+  repository=$(sed -n '1p' "$marker")
+  commit=$(sed -n '2p' "$marker")
+  lines=$(wc -l < "$marker" | tr -d ' ')
+  [[ "$repository" == "$TEMPLATE_REPOSITORY" && "$lines" == "2" ]] && valid_full_commit "$commit" || return 1
+  printf '%s\n' "$commit"
+}
+
 destination_state() {
   local root="$1"
   if [[ ! -e "$root" ]]; then printf 'absent'; return; fi
@@ -1307,19 +1319,19 @@ destination_state() {
   if [[ -f "$root/.git/vibe-template-checkout" ]] &&
      template_origin_is_legacy "$root" &&
      [[ "$(sed -n '1p' "$root/.git/vibe-template-checkout")" == "$TEMPLATE_REPOSITORY" ]] &&
-     [[ "$(sed -n '2p' "$root/.git/vibe-template-checkout")" == "$TEMPLATE_COMMIT" ]] &&
+     [[ "$(sed -n '2p' "$root/.git/vibe-template-checkout")" == "$CURRENT_TEMPLATE_COMMIT" ]] &&
      [[ "$(wc -l < "$root/.git/vibe-template-checkout" | tr -d ' ')" == "2" ]]; then
     printf 'incomplete'; return
   fi
   if template_origin_is_legacy "$root" &&
-     [[ "$(git -C "$root" rev-parse HEAD 2>/dev/null || true)" == "$TEMPLATE_COMMIT" ]] &&
+     [[ "$(git -C "$root" rev-parse HEAD 2>/dev/null || true)" == "$CURRENT_TEMPLATE_COMMIT" ]] &&
      template_markers_are_valid "$root"; then
     if [[ -z "$(git -C "$root" status --porcelain)" ]]; then
       printf 'legacy'; return
     fi
     printf 'unrelated'; return
   fi
-  if [[ -f "$root/.git/vibe-template-provenance" ]] &&
+  if installed_template_commit "$root" >/dev/null &&
      template_remote_is_safe "$root" &&
      template_markers_are_valid "$root"; then
     printf 'complete'; return
@@ -1338,13 +1350,13 @@ copy_template_worktree() {
   git -C "$temporary" init --quiet
   git -C "$temporary" remote add template "$TEMPLATE_REPOSITORY"
   info "The setup retrieves the approved template commit without retaining its Git history."
-  if ! git -C "$temporary" fetch --no-tags --depth=1 template "$TEMPLATE_COMMIT" ||
-     ! git -C "$temporary" checkout --quiet --detach "$TEMPLATE_COMMIT"; then
+  if ! git -C "$temporary" fetch --no-tags --depth=1 template "$CURRENT_TEMPLATE_COMMIT" ||
+     ! git -C "$temporary" checkout --quiet --detach "$CURRENT_TEMPLATE_COMMIT"; then
     rm -rf "$temporary"
     fail "Could not retrieve the approved template commit."
     return 1
   fi
-  if [[ "$(git -C "$temporary" rev-parse HEAD)" != "$TEMPLATE_COMMIT" ]]; then
+  if [[ "$(git -C "$temporary" rev-parse HEAD)" != "$CURRENT_TEMPLATE_COMMIT" ]]; then
     rm -rf "$temporary"
     fail "Template verification failed: the checked-out commit is not approved."
     return 1
@@ -1364,13 +1376,14 @@ initialize_participant_repository() {
   git -C "$root" commit --quiet -m "Initialize project from Creator AI Tools"
   git -C "$root" remote add template "$TEMPLATE_REPOSITORY"
   git -C "$root" remote set-url --push template DISABLED
-  printf '%s\n%s\n' "$TEMPLATE_REPOSITORY" "$TEMPLATE_COMMIT" > "$root/.git/vibe-template-provenance"
+  INSTALLED_TEMPLATE_COMMIT="$CURRENT_TEMPLATE_COMMIT"
+  printf '%s\n%s\n' "$TEMPLATE_REPOSITORY" "$INSTALLED_TEMPLATE_COMMIT" > "$root/.git/vibe-template-provenance"
 }
 
 convert_legacy_template_checkout() {
   local root="$1"
   [[ -z "$(git -C "$root" status --porcelain)" ]] || return 1
-  [[ "$(git -C "$root" rev-parse HEAD 2>/dev/null || true)" == "$TEMPLATE_COMMIT" ]] || return 1
+  [[ "$(git -C "$root" rev-parse HEAD 2>/dev/null || true)" == "$CURRENT_TEMPLATE_COMMIT" ]] || return 1
   rm -rf "$root/.git"
   initialize_participant_repository "$root"
 }
@@ -1485,7 +1498,7 @@ create_participant_repository() {
 SRC_DIR="${VIBE_SETUP_SOURCE_DIR:-$DEFAULT_SRC_DIR}"
 
 ACTIVE_PHASE="project destination verification"
-info "Pinned template commit: $TEMPLATE_COMMIT"
+info "Current template commit available: $CURRENT_TEMPLATE_COMMIT"
 
 PROJECT_NAME="${VIBE_SETUP_PROJECT_NAME:-my-first-app}"
 if [[ -z "${VIBE_SETUP_PROJECT_NAME:-}" ]]; then
@@ -1521,7 +1534,9 @@ while true; do
       break
       ;;
     complete)
+      INSTALLED_TEMPLATE_COMMIT=$(installed_template_commit "$PROJECT_ROOT")
       ok "The independent participant repository is already complete at this root."
+      ok "Existing project template commit verified: $INSTALLED_TEMPLATE_COMMIT"
       break
       ;;
     legacy)
@@ -1560,7 +1575,14 @@ done
 
 ok "Source folder confirmed: $SRC_DIR"
 ok "Project root verified: $PROJECT_ROOT"
-ok "Template commit verified: $TEMPLATE_COMMIT"
+if [[ -z "$INSTALLED_TEMPLATE_COMMIT" ]]; then
+  INSTALLED_TEMPLATE_COMMIT=$(installed_template_commit "$PROJECT_ROOT") || {
+    fail "The installed template provenance marker is invalid. Existing project files were not changed."
+    exit 1
+  }
+fi
+ok "Current template commit available: $CURRENT_TEMPLATE_COMMIT"
+ok "Installed project template commit verified: $INSTALLED_TEMPLATE_COMMIT"
 PARTICIPANT_BRANCH=$(git -C "$PROJECT_ROOT" symbolic-ref --short HEAD)
 ok "Development branch ready: $PARTICIPANT_BRANCH"
 

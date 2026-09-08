@@ -33,20 +33,21 @@ git -C "$test_root/source" commit --quiet -m template
 git -C "$test_root/source" branch -M main
 TEMPLATE_REPOSITORY="$test_root/source"
 SOURCE_BRANCH=main
-TEMPLATE_COMMIT=""
+CURRENT_TEMPLATE_COMMIT=""
+INSTALLED_TEMPLATE_COMMIT=""
 export GIT_AUTHOR_NAME=Test GIT_AUTHOR_EMAIL=test@example.invalid
 export GIT_COMMITTER_NAME=Test GIT_COMMITTER_EMAIL=test@example.invalid
 
 # Resolve main once, then retain that exact checkout commit for this run.
 resolve_main_commit
-initial_template_commit="$TEMPLATE_COMMIT"
-test "$TEMPLATE_COMMIT" = "$(git -C "$test_root/source" rev-parse main)"
+initial_template_commit="$CURRENT_TEMPLATE_COMMIT"
+test "$CURRENT_TEMPLATE_COMMIT" = "$(git -C "$test_root/source" rev-parse main)"
 
 # A later change to main cannot change the already-pinned checkout.
 printf 'change\n' > "$test_root/source/moving"
 git -C "$test_root/source" add moving
 git -C "$test_root/source" commit --quiet -m moving
-test "$TEMPLATE_COMMIT" = "$initial_template_commit"
+test "$CURRENT_TEMPLATE_COMMIT" = "$initial_template_commit"
 
 mkdir -p "$test_root/paths/existing"
 expected_paths_root=$(cd "$test_root/paths" && pwd -P)
@@ -70,6 +71,34 @@ if git -C "$root" push template participant-work >/dev/null 2>&1; then
 fi
 test "$(sed -n '1p' "$root/.git/vibe-template-provenance")" = "$TEMPLATE_REPOSITORY"
 test "$(sed -n '2p' "$root/.git/vibe-template-provenance")" = "$initial_template_commit"
+
+# A rerun can resolve a newer main commit without changing an existing
+# participant project. Its installed template marker remains its true source.
+CURRENT_TEMPLATE_COMMIT=$(git -C "$test_root/source" rev-parse main)
+root_readme_before=$(shasum -a 256 "$root/README.md")
+root_head_before=$(git -C "$root" rev-parse HEAD)
+root_template_before=$(git -C "$root" config --get remote.template.url)
+root_branch_before=$(git -C "$root" symbolic-ref --short HEAD)
+test "$(destination_state "$root")" = complete
+test "$(installed_template_commit "$root")" = "$initial_template_commit"
+test "$(sed -n '2p' "$root/.git/vibe-template-provenance")" = "$initial_template_commit"
+test "$(shasum -a 256 "$root/README.md")" = "$root_readme_before"
+test "$(git -C "$root" rev-parse HEAD)" = "$root_head_before"
+test "$(git -C "$root" config --get remote.template.url)" = "$root_template_before"
+test "$(git -C "$root" symbolic-ref --short HEAD)" = "$root_branch_before"
+
+# Only the expected template repository and a complete 40-character commit
+# form a valid installed provenance marker.
+malformed="$test_root/Documents/src/malformed-app"
+copy_template_worktree "$malformed" absent
+initialize_participant_repository "$malformed"
+printf '%s\nnot-a-commit\n' "$TEMPLATE_REPOSITORY" > "$malformed/.git/vibe-template-provenance"
+test "$(destination_state "$malformed")" = unrelated
+other_template="$test_root/Documents/src/other-template-app"
+copy_template_worktree "$other_template" absent
+initialize_participant_repository "$other_template"
+printf 'https://github.com/example/other-template\n%s\n' "$CURRENT_TEMPLATE_COMMIT" > "$other_template/.git/vibe-template-provenance"
+test "$(destination_state "$other_template")" = unrelated
 
 # GitHub CLI's --remote=origin form includes .git. Every permitted spelling
 # has one credential-free canonical HTTPS identity for marker and receipt use.
@@ -209,7 +238,7 @@ test "$(shasum -a 256 "$unrelated/keep.txt")" = "$before"
 # participant commit or worktree change prevents history/remotes from changing.
 legacy="$test_root/Documents/src/legacy"
 git clone --quiet "$TEMPLATE_REPOSITORY" "$legacy"
-git -C "$legacy" checkout --quiet --detach "$initial_template_commit"
+git -C "$legacy" checkout --quiet --detach "$CURRENT_TEMPLATE_COMMIT"
 test "$(destination_state "$legacy")" = legacy
 convert_legacy_template_checkout "$legacy"
 test "$(git -C "$legacy" symbolic-ref --short HEAD)" = participant-work
