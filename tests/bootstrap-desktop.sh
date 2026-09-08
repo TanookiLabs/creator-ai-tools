@@ -18,7 +18,7 @@ grep -F "$project_root" <<<"$output" >/dev/null
 grep -F 'cannot verify' <<<"$output" >/dev/null
 
 # The verified checkout must precede the Desktop handoff.
-checkout_line=$(grep -n '^ok "Template commit verified:' "$setup" | cut -d: -f1)
+checkout_line=$(grep -n '^ok "Installed project template commit verified:' "$setup" | cut -d: -f1)
 handoff_line=$(grep -n 'show_claude_desktop_handoff "\$PROJECT_ROOT"' "$setup" | tail -1 | cut -d: -f1)
 test "$checkout_line" -lt "$handoff_line"
 
