@@ -87,10 +87,12 @@ only committed migrations, asserts zero users, builds, and performs logged-out
 smoke checks. It never seeds, pushes schema, resets, drops, or deploys. Do not
 run it against shared, staging, or production data.
 
-## Experimental production rehearsal sequence
+## Assistant-led production sequence
 
-This is not a supported production sequence until a disposable participant-owned
-Vercel and Marketplace Postgres rehearsal succeeds. The owner asks the
+The successful live participant-owned `vercel-test-3` Vercel/Neon rehearsal
+reached READY, applied migrations, served canonical HTTPS, and passed browser
+sign-up, sign-out, sign-in, session persistence, and authenticated dashboard
+access. The owner asks the
 assistant to release one reviewed commit to one selected Vercel project. No
 push, build, or provider badge is an automatic deployment. Read-only discovery
 comes first; Vercel and Git remain the source of current state.
@@ -103,14 +105,14 @@ Vercel CLI as repairable: Creator AI Tools is never a writable remote, a
 private participant origin is created and verified before Vercel discovery when
 the participant explicitly requests deployment, and the CLI is invoked
 ephemerally with `npx --yes vercel@latest`. An unchanged starter is recorded as
-a warning but can proceed for an explicitly approved disposable rehearsal.
+a warning but can proceed for an explicitly approved production run.
 After non-mutating validation, committed SQL review, drift checks, and recovery
 ownership checks, it presents one concise non-secret summary and asks once
 before configuration changes, the reviewed migration, and deployment. A refusal
 or cancelled provider interaction stops all later mutations.
 
-The migration uses the selected Vercel production environment only; its CLI
-mechanism remains a rehearsal assumption until proven. Do not switch to a
+The migration uses the selected Vercel production environment only through the
+isolating deployment-skill wrapper. Do not switch to a
 preview/development environment or retry with `db:push`, reset, seed, or
 destructive SQL after a failure. Report only the commit, safe deployment
 identifier, migration result, verifier, time, and redacted smoke outcome.

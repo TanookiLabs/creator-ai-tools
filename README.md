@@ -58,14 +58,16 @@ Start by describing your idea to Claude:
 
 Claude will help you customize the starter, run it locally, and save your work to GitHub.
 
-## Experimental Vercel deployment
+## Vercel deployment
 
 When the reviewed app is ready, ask your assistant:
 
 > Deploy this application to Vercel.
 
-This is an experimental assistant-led workflow until it passes a live disposable
-Vercel and Postgres rehearsal. The assistant rediscovers the project, uses
+This assistant-led workflow passed the live participant-owned `vercel-test-3`
+Vercel/Neon rehearsal: production reached READY, migrations applied, canonical
+HTTPS worked, and browser sign-up, sign-out, sign-in, session persistence, and
+authenticated dashboard access passed. The assistant rediscovers the project, uses
 Vercel Marketplace before suggesting a separate database login, keeps secrets
 out of chat, shows one final non-secret production summary, and stops on a
 failed migration, deployment, or smoke check.

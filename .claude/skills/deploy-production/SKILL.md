@@ -1,88 +1,40 @@
 ---
 name: deploy-production
-description: Experimentally deploy this Next.js application to a participant-controlled Vercel production project when they ask to deploy, release, ship, or go live.
+description: Deploy this Next.js application to a participant-controlled Vercel production project when they ask to deploy, release, ship, or go live.
 ---
 
-# Experimental Vercel deployment
+# Vercel production deployment
 
-This is an assistant-led Vercel workflow proven in a live participant-owned
-Vercel/Neon rehearsal. The canonical path is local `main` → GitHub `main` → Vercel production.
-The participant can start with “Deploy this application to Vercel” or
-`/deploy-production`; they do not run a repository deployment command or copy
-database URLs or secret values into chat.
+This assistant-led path was proven by the live participant-owned `vercel-test-3` Vercel/Neon rehearsal: production reached `READY`, committed migrations applied, canonical HTTPS worked, and browser sign-up, sign-out, sign-in, session persistence, and authenticated dashboard access passed. The canonical path is local `main` → GitHub `main` → Vercel production. The participant starts with “Deploy this application to Vercel” or `/deploy-production`; they never run a repository deployment command or share values in chat.
 
 ## Discover and resume
 
-At the beginning of every invocation, rediscover Git root, branch, commit, working-tree status, remotes, Vercel authentication, linked project/team, Postgres integration, production variable names, current production deployment, canonical domain, and migration status where that can be checked safely. Do not restart or stop local development servers during discovery. Resume from the first incomplete step.
+Record `git status --short`, Git root, branch, commit, remotes, Vercel authentication, linked project/team, Postgres integration, production variable names, current deployment, canonical domain, and migration status. Do not restart local development servers. Resume from the first incomplete step.
 
-Classify findings clearly: a template `origin`, missing participant repository,
-or missing Vercel CLI are repairable; an unchanged starter is a warning for an
-explicitly approved production run; Vercel login and Marketplace terms or
-plan choices require participant action. Stop only for unexplained dirty work,
-a conflicting repository/name, ambiguous ownership, secret mapping ambiguity,
-or a failed migration.
+Classify template `origin`, absent participant repository, or absent Vercel CLI as repairable; unchanged starter as a warning for an explicitly approved production run; Vercel login and Marketplace terms/plan as participant actions. Stop for unexplained dirty work, conflicting repository/name, ambiguous ownership or variable mapping, or failed migration.
 
-Never push to `TanookiLabs/creator-ai-tools`. If it is `origin`, rename it to
-`template`, set its push URL to `DISABLED`, then create a participant-owned
-private repository with `gh repo create <name> --private --source=. --remote=origin --push`
-before Vercel discovery. The explicit request to deploy authorizes this safe
-private-repository setup; do not ask a second repository confirmation. Verify
-the known owner/URL and that remote `main` resolves to the local
-commit and make `main` the GitHub default branch. Existing installer projects
-on an old branch may be migrated deliberately; never delete their old remote
-branch automatically. If creation succeeds but its first push fails, retain the origin and
-resume the absent branch safely on rerun. Do not overwrite, repoint, or infer
-an occupied repository; stop for a name/owner choice or conflicting remote
-branch. A read-only `template` remote is allowed. If participant history might
-be rewritten, stop rather than repairing it automatically.
+Never push to `TanookiLabs/creator-ai-tools`. If it is `origin`, rename it to `template`, set push URL `DISABLED`, then create the participant-owned private repository with `gh repo create <name> --private --source=. --remote=origin --push` before Vercel discovery. The explicit deployment request authorizes this safe private-repository setup. Verify the known owner/URL, remote `main` resolves to the local commit, and make `main` default. Keep old installer branches unless deliberately migrated. On an occupied name/owner, conflicting remote branch, or possible history rewrite, stop.
 
-## Participant-controlled actions
+## Provider and configuration boundaries
 
-The participant personally completes Vercel browser login/OAuth and any
-Marketplace provider agreement or plan choice. Use Vercel Marketplace first to
-reuse or connect one Postgres integration; do not require a separate Neon login
-unless Vercel cannot expose a necessary capability, and explain that gap first.
-Avoid duplicate projects or databases.
+The participant completes Vercel login/OAuth and Marketplace agreement or plan choices. Use Vercel Marketplace first, reuse the selected Postgres integration, and avoid duplicate projects/databases. Prefer browser provisioning; do not use `vercel integration add neon` or commands that install agent skills when a non-mutating path exists.
 
-Never print, request, commit, or paste database URLs, auth secrets, tokens,
-cookies, or provider output containing them. Inspect and report variable names
-only. Map the integration's pooled and direct values to `DATABASE_URL` and
-`DIRECT_URL` without exposing either value; stop rather than guessing. Reuse an
-existing healthy `BETTER_AUTH_SECRET`; for a new project the assistant may
-generate it locally and stream it directly to Vercel without displaying it.
-Never rotate an existing secret automatically. Set `BETTER_AUTH_URL` only to a
-verified canonical HTTPS production origin belonging to the selected project.
+Before provider commands, capture a temporary snapshot with `cleanup-provider-side-effects.sh capture "$PROJECT_ROOT" "$STATE_DIR"`; run its `cleanup` action on completion and EXIT/HUP/INT/TERM. It removes only newly created, untracked `.agents`, `.claude/skills/neon`, `.claude/skills/neon-postgres`, and `skills-lock.json`, restores only an exact provider-added `.env*` gitignore line, and requires final `git status --short` to match the snapshot. Never remove the tracked `.claude/skills/deploy-production` skill. Stop for unrelated or ambiguous changes.
+
+Never print, request, commit, or paste database URLs, secrets, tokens, cookies, or provider output containing them. Inspect and report names only. Never run `vercel env pull` into `.env.local`; if a file is required, use an explicit `mktemp` path outside the project and an EXIT/HUP/INT/TERM removal trap. Preserve any existing `.env.local` and verify the local `.env` database configuration is unchanged.
+
+Identify exactly one Marketplace pooled and one unpooled Neon variable. The migration wrapper maps them to `DATABASE_URL` and `DIRECT_URL` only in its child process; do not create a redundant write-only `DIRECT_URL`. Stop rather than guessing. Reuse a healthy `BETTER_AUTH_SECRET` (or generate and stream a new one without displaying it); never rotate automatically. Keep it write-only/sensitive and scope `BETTER_AUTH_URL` only to the verified canonical HTTPS production origin.
 
 ## Validate, confirm, mutate
 
-Run focused tests, lint, type checking, Prisma validation with safe injected configuration, and build checks appropriate to the change. Use the ephemeral CLI as `npx --yes vercel@latest ...`; do not add a dependency or globally install it. Record the resolved `npx --yes vercel@latest --version` result in the rehearsal report. Confirm migration files are committed and determine pending migrations without changing schema. Warn “This appears to be an unchanged starter application” when applicable; include it in the final summary, but continue an explicitly approved production run.
+Run focused tests, lint, type checking, Prisma validation with safe injected configuration, and build checks. Use `npx --yes vercel@latest ...`, never a global install or dependency; record its resolved version in the redacted deployment summary. Confirm migrations are committed and inspect pending state without schema mutation. Warn “This appears to be an unchanged starter application” but continue an explicitly approved production run.
 
-Before Vercel mutations, show one concise non-secret summary: verified
-participant repository and commit, Vercel project, Postgres integration,
-configured variable names, canonical production URL, starter warning, and
-migration status. Ask once: “Continue with the production migration and
-deployment?” A general affirmative answer authorizes Vercel configuration, the
-reviewed migration, and deployment only.
+Before Vercel mutations, display one non-secret summary: repository/commit, project, integration, variable names, HTTPS origin, starter warning, and migration status. Ask once: “Continue with the production migration and deployment?” A general affirmative answer authorizes Vercel configuration, reviewed migration, and deployment only.
 
-After confirmation, verify Vercel production tracks `main` and that its GitHub
-commit author is associated with the Vercel user. Reconcile schema state, then
-run the reviewed migration once through the selected Vercel production environment. Resolve `SKILL_DIR` to the directory containing this skill, then run `bash "$SKILL_DIR/run-production-migration.sh" "$PROJECT_ROOT" npx --yes vercel@latest env run -e production -- npm run db:migrate`. The wrapper requires the project root followed by the command, hides local `.env` and `.env.local`, and restores them on exit. Do not print, export, or copy production values while
-running it. Trigger one Git-backed production deployment and wait only for a
-bounded interval. `READY`, `ERROR`, `CANCELED`, and `BLOCKED` are terminal;
-on any non-READY state stop without retry and report the deployment ID,
-dashboard URL, and provider reason without filtering live errors. Never use `prisma db push`, reset, destructive SQL,
-migration generation, forced deployment flags, or a retry/improvised repair
-after migration failure.
+After confirmation, verify production tracks `main` and the GitHub commit author is associated with the Vercel user. Reconcile schema state, then run once: `npx --yes vercel@latest env run -e production -- bash "$SKILL_DIR/run-production-migration.sh" "$PROJECT_ROOT" "$POOLED_VARIABLE" "$UNPOOLED_VARIABLE" npm run db:migrate`. Resolve `SKILL_DIR` relative to this skill. The wrapper takes project root, discovered names, then command; hides/restores local dotenv files and injects pooled/unpooled values only into Prisma. Do not print, export, or copy values. Never use `prisma db push`, reset, seed, destructive/ad-hoc SQL, migration generation, forced flags, or retry after migration failure.
+
+Trigger one Git-backed production deployment and wait only for a bounded interval. `READY`, `ERROR`, `CANCELED`, and `BLOCKED` are terminal; on non-READY stop without retry and report deployment ID, dashboard URL, and provider reason without filtering errors.
 
 ## Verify and stop
 
-Verify the deployment is ready, canonical HTTPS responds, logs have no missing
-variable or database errors, the database accepts a read-only query, expected
-Better Auth tables exist, anonymous protected routes redirect to sign-in, and
-sign-up reaches the application without origin or missing-table errors. Do not
-create an account without participant approval.
-
-On migration, deployment, or smoke failure, make no further provider or
-database mutation. Give a concise redacted failure summary and ask the
-participant how to proceed. Do not add a deployment dependency or public
-deployment script to this repository.
+Verify READY, canonical HTTPS, no missing-variable/database logs, read-only database access, Better Auth tables, protected-route redirect, and—only with participant approval—sign-up, sign-out, sign-in, session persistence, and authenticated pages. On any failure, make no further provider/database mutation; give a concise redacted summary and ask how to proceed. Do not add a deployment dependency or public deployment script.

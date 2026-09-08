@@ -42,11 +42,11 @@ participant confirmation described by the deployment skill. Never weaken
 authentication, bypass tool permissions, change repository access, overwrite
 occupied paths, or expose credentials to make a task pass.
 
-## Experimental assistant-led production deployments
+## Assistant-led production deployments
 
 Use `.claude/skills/deploy-production/SKILL.md` when a participant asks to
-release, ship, or deploy this application. It is an experimental Vercel-first
-workflow until a disposable participant-owned rehearsal succeeds. Rediscover
+release, ship, or deploy this application. It is a Vercel-first workflow proven
+by the successful live participant-owned `vercel-test-3` rehearsal. Rediscover
 Git and Vercel state on every invocation, use Vercel Marketplace before asking
 for a separate Neon login, and keep database URLs and secret values out of
 chat, Git, and reports. The participant approves Vercel identity, Marketplace
@@ -57,8 +57,8 @@ checks. A template origin or missing participant repository is repairable only
 when the participant explicitly requests deployment and is completed before
 Vercel discovery; never push to Creator AI Tools. The final confirmation covers
 Vercel configuration, migration, and deployment. Use ephemeral
-`npx --yes vercel@latest` commands and do not restart local dev servers during
-discovery. Do not add public deployment scripts, daemons, launchers, credential
+`npx --yes vercel@latest` commands, preserve local dotenv configuration, and do
+not restart local dev servers during discovery. Do not add public deployment scripts, daemons, launchers, credential
 helpers, permission bypasses, or user-facing npm deployment commands.
 
 ## Generated first-app handoff

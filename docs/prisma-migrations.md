@@ -14,8 +14,8 @@ There are intentionally no reset or force-reset commands in `package.json`. Do n
 
 ## Connection URLs
 
-- `DATABASE_URL` is the runtime URL. For Neon, use the pooled connection URL; the application and Prisma Client use it for normal queries.
-- `DIRECT_URL` is the direct, non-pooled URL. Prisma Migrate uses it for migration and baseline operations that need a stable direct PostgreSQL connection.
+- `DATABASE_URL` is the runtime URL. For Neon, use the pooled Marketplace variable; the application and Prisma Client use it for normal queries.
+- `DIRECT_URL` is the direct, non-pooled URL. The deployment wrapper maps the discovered unpooled Marketplace variable to it only for Prisma Migrate.
 
 Both values are required in the environment for this schema. Keep them pointed at the same database/branch; use separate values for development, staging, and production.
 
@@ -33,7 +33,7 @@ names:
 Before setting those production variables, use the completed live
 participant-owned Vercel Marketplace rehearsal as evidence that `DATABASE_URL` is pooled and
 `DIRECT_URL` is direct for the selected Postgres integration. Treat a missing,
-differently selected, unrehearsed, or drifted pair as a stop condition. Do not
+ambiguous, differently selected, or drifted pair as a stop condition. Do not
 infer the target from a connection URL or expose provider output during
 production execution.
 
@@ -46,8 +46,9 @@ project root as the first argument; it makes local `.env` and `.env.local`
 unavailable and restores them on every exit:
 
 ```bash
-bash "$SKILL_DIR/run-production-migration.sh" "$PROJECT_ROOT" \
-  npx --yes vercel@latest env run -e production -- npm run db:migrate
+npx --yes vercel@latest env run -e production -- bash \
+  "$SKILL_DIR/run-production-migration.sh" "$PROJECT_ROOT" \
+  "$POOLED_VARIABLE" "$UNPOOLED_VARIABLE" npm run db:migrate
 ```
 
 Do not substitute a preview/development environment, print or copy values, or use a

@@ -1,4 +1,4 @@
-# Vercel deployment (experimental)
+# Vercel deployment
 
 Vercel is the experimental assistant-led production path for this Next.js app.
 Ask the assistant to “Deploy this application to Vercel”; do not use a custom
@@ -16,7 +16,7 @@ before Vercel discovery when the participant explicitly requests deployment.
 It verifies the owner and remote `main` commit without overwriting
 a conflicting branch. It uses `npx --yes vercel@latest`, so no global CLI
 installation is needed. An unchanged starter is a warning, not a blocker, for
-an explicitly approved disposable rehearsal.
+an explicitly approved production run.
 
 Vercel Marketplace is the normal way to reuse or connect Postgres. Existing
 projects, integrations, and healthy auth secrets are reused. The assistant
@@ -25,4 +25,5 @@ sets `BETTER_AUTH_URL` only to the selected canonical HTTPS origin, applies a
 reviewed migration once, deploys, and observes the live app. It stops on any
 failure without a destructive database repair or automatic retry.
 
-This path remains experimental until a disposable end-to-end rehearsal passes.
+The live participant-owned `vercel-test-3` rehearsal reached READY, applied Neon
+migrations, and passed canonical HTTPS plus browser authentication and dashboard checks.

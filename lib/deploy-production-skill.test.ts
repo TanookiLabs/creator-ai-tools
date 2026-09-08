@@ -19,19 +19,19 @@ const documents = Object.fromEntries(documentPaths.map((path) => [path, readFile
 test("the deployment skill is concise, Vercel-first, and resumable", () => {
   assert.ok(skill.split("\n").length <= 90)
   assert.match(skill, /Deploy this application to Vercel/i)
-  assert.match(skill, /rediscover/i)
-  assert.match(skill, /Vercel Marketplace first/i)
+  assert.match(skill, /Record `git status --short`/i)
+  assert.match(skill, /Use Vercel Marketplace first/i)
   assert.doesNotMatch(skill, /neonctl|npm install -g|exact confirmation payload|ledger/i)
 })
 
 test("the deployment skill protects secrets and keeps one final mutation boundary", () => {
-  assert.match(skill, /Never print, request, commit, or paste database URLs, auth secrets/i)
+  assert.match(skill, /Never print, request, commit, or paste database URLs, secrets/i)
   assert.match(skill, /Ask once: “Continue with the production\s+migration and\s+deployment\?”/i)
-  assert.match(skill, /Never use `prisma db\s+push`, reset, destructive SQL/i)
-  assert.match(skill, /make no further provider or\s+database mutation/i)
+  assert.match(skill, /Never use `prisma db\s+push`, reset, seed, destructive\/ad-hoc SQL/i)
+  assert.match(skill, /make no further provider\/database mutation/i)
   assert.match(skill, /run-production-migration\.sh/)
   assert.doesNotMatch(skill, /clear local .* from `npx --yes vercel@latest env run/i)
-  assert.match(skill, /live participant-owned\s+Vercel\/Neon rehearsal/i)
+  assert.match(skill, /live participant-owned `vercel-test-3` Vercel\/Neon rehearsal/i)
 })
 
 test("the Git-backed Vercel monitor stops on every terminal provider state", () => {
@@ -39,7 +39,7 @@ test("the Git-backed Vercel monitor stops on every terminal provider state", () 
   assert.match(skill, /`READY`, `ERROR`, `CANCELED`, and `BLOCKED` are terminal/i)
   assert.match(skill, /provider reason/i)
   assert.match(skill, /stop without retry/i)
-  assert.match(skill, /without filtering live errors/i)
+  assert.match(skill, /without filtering errors/i)
 })
 
 test("production migration always uses the dotenv-isolating skill wrapper", () => {
@@ -49,21 +49,37 @@ test("production migration always uses the dotenv-isolating skill wrapper", () =
     assert.doesNotMatch(contents, /disposable rehearsal|unverified.*rehearsal/i)
     assert.doesNotMatch(contents, /env -u DATABASE_URL[\s\S]*vercel@latest env run/i)
   }
+  assert.match(skill, /exactly one Marketplace pooled and one unpooled Neon variable/i)
+  assert.match(skill, /do not create a redundant write-only\s+`DIRECT_URL`/i)
+  assert.match(skill, /only in its child process/i)
 })
 
-test("every relevant document keeps the workflow experimental and one-confirmation only", () => {
+test("documentation records the successful live rehearsal and one confirmation", () => {
   for (const [path, contents] of Object.entries(documents)) {
     assert.doesNotMatch(contents, /(^|\n)#+\s+Supported production sequence|only supported assistant-led production/im, path)
     assert.doesNotMatch(contents, /deployment receipt|\.deployment-receipts|separate production-variable confirmation|fresh migration approval/i, path)
   }
-  assert.match(documents["docs/release-handoff.md"], /Experimental production rehearsal sequence/)
-  assert.match(documents["docs/participant-owned-provider-rehearsal.md"], /not the current\s+operating procedure/i)
-  assert.match(documents["README.md"], /experimental/i)
+  assert.match(documents["docs/release-handoff.md"], /vercel-test-3/i)
+  assert.match(documents["docs/participant-owned-provider-rehearsal.md"], /vercel-test-3/i)
+  assert.match(documents["README.md"], /sign-up, sign-out, sign-in, session persistence/i)
   assert.match(documents["CLAUDE.md"], /configuration, reviewed\s+production migration, and deployment are covered by the single final\s+participant confirmation/i)
   assert.match(documents["docs/auth-access.md"], /For a new project with no secret, generate one locally\s+and stream it directly to Vercel without displaying or persisting it/i)
   assert.match(documents["docs/auth-access.md"], /asks once before configuration, migration,\s+and deployment/i)
   assert.match(documents["docs/prisma-migrations.md"], /single final production summary and confirmation/i)
   assert.doesNotMatch(documents["docs/prisma-migrations.md"], /production configuration record|\breceipt\b/i)
+})
+
+test("provider cleanup and dotenv rules preserve participant state", () => {
+  assert.match(skill, /cleanup-provider-side-effects\.sh capture/i)
+  assert.match(skill, /\.agents`, `\.claude\/skills\/neon`, `\.claude\/skills\/neon-postgres`, and `skills-lock\.json`/)
+  assert.match(skill, /final `git status --short` to match the snapshot/i)
+  assert.match(skill, /Never run `vercel env pull` into `\.env\.local`/i)
+  assert.match(skill, /mktemp.*EXIT\/HUP\/INT\/TERM removal trap/i)
+  assert.match(skill, /Preserve any existing `\.env\.local`/i)
+  const cleanup = readFileSync(".claude/skills/deploy-production/cleanup-provider-side-effects.sh", "utf8")
+  assert.match(cleanup, /status --short/)
+  assert.match(cleanup, /\.claude\/skills\/neon-postgres/)
+  assert.doesNotMatch(cleanup, /deploy-production.*rm -rf/i)
 })
 
 test("the normal path has no participant deployment command or Neon state framework", () => {
@@ -75,17 +91,16 @@ test("the normal path has no participant deployment command or Neon state framew
 
 test("repository repair and rehearsal discovery are safe and recoverable", () => {
   assert.match(skill, /Never push to `TanookiLabs\/creator-ai-tools`/)
-  assert.match(skill, /rename it to\s+`template`, set its push URL to `DISABLED`/i)
+  assert.match(skill, /rename it to `template`, set push URL `DISABLED`/i)
   assert.match(skill, /gh repo create <name> --private --source=\. --remote=origin --push/)
-  assert.match(skill, /explicit request to deploy authorizes this safe\s+private-repository setup/i)
+  assert.match(skill, /explicit deployment request authorizes this safe private-repository setup/i)
   assert.match(skill, /before Vercel discovery/i)
-  assert.match(skill, /remote `main` resolves to the local\s+commit/i)
-  assert.match(skill, /creation succeeds but its first push fails, retain the origin/i)
-  assert.match(skill, /stop for a name\/owner choice or conflicting remote\s+branch/i)
-  assert.match(skill, /authorizes Vercel configuration, the\s+reviewed migration, and deployment only/i)
+  assert.match(skill, /remote `main` resolves to the local commit/i)
+  assert.match(skill, /On an occupied name\/owner, conflicting remote branch, or possible history rewrite, stop/i)
+  assert.match(skill, /authorizes Vercel configuration, reviewed migration, and deployment only/i)
   assert.match(skill, /unchanged starter.*explicitly approved production run/i)
-  assert.match(skill, /npx --yes vercel@latest --version/)
-  assert.match(skill, /Do not restart or stop local development servers during discovery/i)
+  assert.match(skill, /record its resolved version/i)
+  assert.match(skill, /Do not restart local development servers/i)
 })
 
 test("the Prisma verification fixture is local to schema validation", () => {
