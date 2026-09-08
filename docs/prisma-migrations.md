@@ -45,7 +45,7 @@ rehearsal assumption is to inject the selected Vercel project's production
 environment directly into the reviewed command:
 
 ```bash
-vercel env run -e production -- npm run db:migrate
+npx --yes vercel@latest env run -e production -- npm run db:migrate
 ```
 
 This exact CLI behavior is unverified until the disposable rehearsal; do not

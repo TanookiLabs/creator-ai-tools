@@ -21,7 +21,7 @@ test("the deployment skill is concise, Vercel-first, and resumable", () => {
   assert.match(skill, /Deploy this application to Vercel/i)
   assert.match(skill, /rediscover/i)
   assert.match(skill, /Vercel Marketplace first/i)
-  assert.doesNotMatch(skill, /neonctl|vercel@48\.4\.0|exact confirmation payload|ledger/i)
+  assert.doesNotMatch(skill, /neonctl|npm install -g|exact confirmation payload|ledger/i)
 })
 
 test("the deployment skill protects secrets and keeps one final mutation boundary", () => {
@@ -29,7 +29,7 @@ test("the deployment skill protects secrets and keeps one final mutation boundar
   assert.match(skill, /Ask once: “Continue with the production\s+migration and deployment\?”/i)
   assert.match(skill, /Never use `prisma db\s+push`, reset, destructive SQL/i)
   assert.match(skill, /make no further provider or\s+database mutation/i)
-  assert.match(skill, /vercel env run -e production -- npm run db:migrate/i)
+  assert.match(skill, /npx --yes vercel@latest env run -e production -- npm\s+run db:migrate/i)
   assert.match(skill, /rehearsal assumption/i)
 })
 
@@ -53,6 +53,15 @@ test("the normal path has no participant deployment command or Neon state framew
   assert.doesNotMatch(all, /npm run deploy:setup|neonctl|separate Neon authentication/i)
   assert.doesNotMatch(skill, /receipt|ledger|runner|state machine/i)
   assert.doesNotMatch(readFileSync("package.json", "utf8"), /"deploy:setup"/i)
+})
+
+test("repository repair and rehearsal discovery are safe and recoverable", () => {
+  assert.match(skill, /Never push to `TanookiLabs\/creator-ai-tools`/)
+  assert.match(skill, /rename it to\s+`template`, set its push URL to `DISABLED`/i)
+  assert.match(skill, /gh repo create <name> --private --source=\. --remote=origin --push/)
+  assert.match(skill, /unchanged starter.*explicitly approved disposable rehearsal/i)
+  assert.match(skill, /npx --yes vercel@latest --version/)
+  assert.match(skill, /Do not restart or stop local development servers during discovery/i)
 })
 
 test("the Prisma verification fixture is local to schema validation", () => {

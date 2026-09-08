@@ -1,9 +1,9 @@
 # Claude Desktop: first handoff and recovery
 
 Claude Desktop Code is the primary interface for this macOS onboarding release.
-The bootstrap finishes the pinned template checkout before Desktop opens. Your
-project remains on disk if Desktop is unavailable or folder selection is not
-completed.
+The bootstrap copies the pinned template source into an independent
+`participant-work` repository before Desktop opens. Your project remains on
+disk if Desktop is unavailable or folder selection is not completed.
 
 Gatekeeper approval, Desktop sign-in and Code eligibility, exact-folder
 confirmation, GitHub Keychain access, and visual preview confirmation remain
@@ -112,6 +112,7 @@ a working login solely because a remote session could not read the Keychain.
 ## Safe rerun
 
 Run the exact immutable bootstrap block from the root README again. Healthy
-steps are reused. For an interrupted approved checkout, choose **Resume**. For
-an unrelated nonempty destination, choose another location or abort. Never
-delete or merge its contents to force setup to continue.
+steps are reused. A clean legacy template checkout can be explicitly converted;
+participant commits, changes, and unrelated nonempty destinations are left
+alone. Choose another location or abort rather than deleting or merging content
+to force setup to continue.

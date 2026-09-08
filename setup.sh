@@ -296,6 +296,8 @@ produce_first_app_contract() {
   RECEIPT_CONTRACT_VERSION="$CONTRACT_VERSION" \
   RECEIPT_RUN_STARTED_AT="$RUN_STARTED_AT" \
   RECEIPT_REPOSITORY="$TEMPLATE_REPOSITORY" \
+  RECEIPT_APPLICATION_REPOSITORY="$(git -C "$PROJECT_ROOT" remote get-url origin 2>/dev/null || printf 'local-only')" \
+  RECEIPT_APPLICATION_COMMIT="$(git -C "$PROJECT_ROOT" rev-parse HEAD)" \
   RECEIPT_SOURCE_BRANCH="$SOURCE_BRANCH" \
   RECEIPT_INSTALLER_SHA256="$(shasum -a 256 "$0" | awk '{print $1}')" \
   RECEIPT_TEMPLATE_REPOSITORY="$TEMPLATE_REPOSITORY" \
@@ -344,16 +346,24 @@ function requireMatch(value, expression, name) {
   if (!expression.test(value)) throw new Error(`Receipt ${name} is invalid.`);
 }
 if (!path.isAbsolute(root) || root === path.parse(root).root) throw new Error("Receipt application root is unsafe.");
-const repository = env.RECEIPT_TEMPLATE_REPOSITORY;
-const commit = env.RECEIPT_TEMPLATE_COMMIT;
-requireMatch(repository, /^https:\/\/[^/?#@]+\/[^/?#]+\/[^/?#]+$/, "repository");
-requireMatch(commit, /^[0-9a-f]{40}$/, "template commit");
+const repository = env.RECEIPT_APPLICATION_REPOSITORY || "local-only";
+const commit = env.RECEIPT_APPLICATION_COMMIT;
+const templateRepository = env.RECEIPT_TEMPLATE_REPOSITORY;
+const templateCommit = env.RECEIPT_TEMPLATE_COMMIT;
+if (repository !== "local-only") requireMatch(repository, /^https:\/\/[^/?#@]+\/[^/?#]+\/[^/?#]+$/, "application repository");
+requireMatch(commit, /^[0-9a-f]{40}$/, "application commit");
+requireMatch(templateRepository, /^https:\/\/[^/?#@]+\/[^/?#]+\/[^/?#]+$/, "template repository");
+requireMatch(templateCommit, /^[0-9a-f]{40}$/, "template commit");
 requireMatch(env.RECEIPT_SOURCE_BRANCH, /^main$/, "source branch");
 requireMatch(env.RECEIPT_INSTALLER_SHA256, /^[0-9a-f]{64}$/, "installer digest");
 if (fs.realpathSync(root) !== root) throw new Error("Receipt root does not match the physical checkout root.");
 if (require("node:child_process").execFileSync("git", ["-C", root, "rev-parse", "HEAD"], { encoding: "utf8" }).trim() !== commit) throw new Error("Receipt commit does not match the checkout.");
-const origin = require("node:child_process").execFileSync("git", ["-C", root, "remote", "get-url", "origin"], { encoding: "utf8" }).trim().replace(/\.git$/, "");
-if (origin !== repository) throw new Error("Receipt repository does not match the checkout.");
+if (repository !== "local-only") {
+  const origin = require("node:child_process").execFileSync("git", ["-C", root, "remote", "get-url", "origin"], { encoding: "utf8" }).trim().replace(/\.git$/, "");
+  if (origin !== repository) throw new Error("Receipt repository does not match the checkout.");
+}
+const templateMarker = fs.readFileSync(path.join(root, ".git", "vibe-template-provenance"), "utf8").trim().split(/\r?\n/);
+if (templateMarker.length !== 2 || templateMarker[0] !== templateRepository || templateMarker[1] !== templateCommit) throw new Error("Receipt template provenance does not match the local marker.");
 
 const stateDir = path.join(root, ".first-app");
 const diagnosticsDir = path.join(stateDir, "diagnostics");
@@ -405,7 +415,7 @@ const receipt = {
   application: { root, repository, commit, instructions: ["CLAUDE.md", "README.md", "docs/quality-verification.md"] },
   provenance: {
     bootstrap: { repository: env.RECEIPT_REPOSITORY, source_branch: env.RECEIPT_SOURCE_BRANCH, sha256: env.RECEIPT_INSTALLER_SHA256 },
-    template: { repository, source_branch: env.RECEIPT_SOURCE_BRANCH, commit },
+    template: { repository: templateRepository, source_branch: env.RECEIPT_SOURCE_BRANCH, commit: templateCommit },
   },
   capabilities,
   participant_actions: actions,
@@ -436,7 +446,7 @@ for (const name of diagnostics.slice(0, Math.max(0, diagnostics.length - 5))) fs
 
 const lines = ["# First App Handoff", `<!-- generated; local-only; contract ${receipt.contract_version} -->`, "", "## Next action", ""];
 for (const action of actions) lines.push(`- ${action.instruction}`);
-lines.push("", "## Application", "", `- Root: \`${root}\``, `- Repository: \`${repository}\``, `- Commit: \`${commit}\``, "", "## Provenance", "", `- Source branch: \`${receipt.provenance.template.source_branch}\``, `- Template repository: \`${repository}\``, `- Template commit: \`${commit}\``, `- Downloaded installer SHA-256: \`${receipt.provenance.bootstrap.sha256}\``, "", "## Capability results", "", "| ID | Status | Version | Checked at | Summary |", "| --- | --- | --- | --- | --- |");
+lines.push("", "## Application", "", `- Root: \`${root}\``, `- Repository: \`${repository}\``, `- Commit: \`${commit}\``, "", "## Provenance", "", `- Source branch: \`${receipt.provenance.template.source_branch}\``, `- Template repository: \`${templateRepository}\``, `- Template commit: \`${templateCommit}\``, `- Downloaded installer SHA-256: \`${receipt.provenance.bootstrap.sha256}\``, "", "## Capability results", "", "| ID | Status | Version | Checked at | Summary |", "| --- | --- | --- | --- | --- |");
 for (const item of capabilities) lines.push(`| ${item.id} | ${item.status} | ${item.version || "—"} | ${item.checked_at} | ${item.summary} |`);
 lines.push("", "## Durable instructions", "");
 for (const instruction of receipt.application.instructions) lines.push(`- [${instruction}](${instruction})`);
@@ -1251,7 +1261,15 @@ valid_project_name() {
   [[ "$1" =~ ^[a-z0-9][a-z0-9._-]{0,62}$ && "$1" != "." && "$1" != ".." ]]
 }
 
-template_origin_is_approved() {
+template_remote_is_safe() {
+  local root="$1" template_url template_push_url
+  template_url=$(git -C "$root" remote get-url template 2>/dev/null || true)
+  template_push_url=$(git -C "$root" remote get-url --push template 2>/dev/null || true)
+  [[ "$template_url" == "$TEMPLATE_REPOSITORY" || "$template_url" == "${TEMPLATE_REPOSITORY}.git" ]] &&
+    [[ "$template_push_url" == "DISABLED" ]]
+}
+
+template_origin_is_legacy() {
   local root="$1" origin
   origin=$(git -C "$root" remote get-url origin 2>/dev/null || true)
   [[ "$origin" == "$TEMPLATE_REPOSITORY" || "$origin" == "${TEMPLATE_REPOSITORY}.git" ]]
@@ -1273,63 +1291,96 @@ destination_state() {
     printf 'empty'; return
   fi
   if [[ -f "$root/.git/vibe-template-checkout" ]] &&
-     template_origin_is_approved "$root" &&
+     template_origin_is_legacy "$root" &&
      [[ "$(sed -n '1p' "$root/.git/vibe-template-checkout")" == "$TEMPLATE_REPOSITORY" ]] &&
      [[ "$(sed -n '2p' "$root/.git/vibe-template-checkout")" == "$TEMPLATE_COMMIT" ]] &&
      [[ "$(wc -l < "$root/.git/vibe-template-checkout" | tr -d ' ')" == "2" ]]; then
     printf 'incomplete'; return
   fi
-  if template_origin_is_approved "$root" &&
+  if template_origin_is_legacy "$root" &&
      [[ "$(git -C "$root" rev-parse HEAD 2>/dev/null || true)" == "$TEMPLATE_COMMIT" ]] &&
+     template_markers_are_valid "$root"; then
+    if [[ -z "$(git -C "$root" status --porcelain)" ]]; then
+      printf 'legacy'; return
+    fi
+    printf 'unrelated'; return
+  fi
+  if [[ -f "$root/.git/vibe-template-provenance" ]] &&
+     template_remote_is_safe "$root" &&
      template_markers_are_valid "$root"; then
     printf 'complete'; return
   fi
   printf 'unrelated'
 }
 
-checkout_template() {
+copy_template_worktree() {
   local root="$1" state="$2"
+  local temporary
   if [[ "$state" == "absent" ]]; then
     mkdir -p "$(dirname "$root")"
     mkdir "$root"
   fi
-  if [[ "$state" == "absent" || "$state" == "empty" ]]; then
-    git -C "$root" init --quiet
-    git -C "$root" remote add origin "$TEMPLATE_REPOSITORY"
-    printf '%s\n%s\n' "$TEMPLATE_REPOSITORY" "$TEMPLATE_COMMIT" > "$root/.git/vibe-template-checkout"
-  fi
-
-  info "The setup fetches the approved template commit. A retry resumes here."
-  git -C "$root" fetch --no-tags --depth=1 origin "$TEMPLATE_COMMIT"
-  git -C "$root" checkout --quiet --detach "$TEMPLATE_COMMIT"
-
-  if ! template_origin_is_approved "$root"; then
-    fail "Template verification failed: the origin is not approved."
+  temporary=$(mktemp -d "${TMPDIR:-/tmp}/creator-ai-template.XXXXXX")
+  git -C "$temporary" init --quiet
+  git -C "$temporary" remote add template "$TEMPLATE_REPOSITORY"
+  info "The setup retrieves the approved template commit without retaining its Git history."
+  if ! git -C "$temporary" fetch --no-tags --depth=1 template "$TEMPLATE_COMMIT" ||
+     ! git -C "$temporary" checkout --quiet --detach "$TEMPLATE_COMMIT"; then
+    rm -rf "$temporary"
+    fail "Could not retrieve the approved template commit."
     return 1
   fi
-  if [[ "$(git -C "$root" rev-parse HEAD)" != "$TEMPLATE_COMMIT" ]]; then
+  if [[ "$(git -C "$temporary" rev-parse HEAD)" != "$TEMPLATE_COMMIT" ]]; then
+    rm -rf "$temporary"
     fail "Template verification failed: the checked-out commit is not approved."
     return 1
   fi
+  tar -C "$temporary" --exclude=.git -cf - . | tar -C "$root" -xf -
+  rm -rf "$temporary"
   if ! template_markers_are_valid "$root"; then
     fail "Template verification failed: required application root markers are missing."
     return 1
   fi
-  rm -f "$root/.git/vibe-template-checkout"
 }
 
-ensure_participant_branch() {
-  local root="$1" branch
-  branch=$(git -C "$root" symbolic-ref --quiet --short HEAD 2>/dev/null || true)
-  if [[ -z "$branch" ]]; then
-    if git -C "$root" show-ref --verify --quiet refs/heads/participant-work; then
-      git -C "$root" checkout --quiet participant-work
-    else
-      git -C "$root" checkout --quiet -b participant-work
-    fi
+initialize_participant_repository() {
+  local root="$1"
+  git -C "$root" init --quiet -b participant-work
+  git -C "$root" add .
+  git -C "$root" commit --quiet -m "Initialize project from Creator AI Tools"
+  git -C "$root" remote add template "$TEMPLATE_REPOSITORY"
+  git -C "$root" remote set-url --push template DISABLED
+  printf '%s\n%s\n' "$TEMPLATE_REPOSITORY" "$TEMPLATE_COMMIT" > "$root/.git/vibe-template-provenance"
+}
+
+convert_legacy_template_checkout() {
+  local root="$1"
+  [[ -z "$(git -C "$root" status --porcelain)" ]] || return 1
+  [[ "$(git -C "$root" rev-parse HEAD 2>/dev/null || true)" == "$TEMPLATE_COMMIT" ]] || return 1
+  rm -rf "$root/.git"
+  initialize_participant_repository "$root"
+}
+
+create_participant_repository() {
+  local root="$1" project_name="$2" repository
+  [[ "$GITHUB_VERIFIED" == "true" && -n "$GH_USER" ]] || {
+    warn "GitHub is unavailable. This project remains a fresh local repository with no origin."
+    return 0
+  }
+  if gh repo view "$GH_USER/$project_name" >/dev/null 2>&1; then
+    warn "GitHub repository $GH_USER/$project_name already exists. This local project was not connected to it."
+    return 0
   fi
-  branch=$(git -C "$root" symbolic-ref --quiet --short HEAD)
-  printf '%s' "$branch"
+  if [[ "${VIBE_SETUP_ASSUME_YES:-0}" != "1" ]] && ! confirm "Create private GitHub repository $GH_USER/$project_name and push participant-work?"; then
+    warn "Private GitHub repository creation was skipped. The deployment skill can create one later."
+    return 0
+  fi
+  if ! gh repo create "$project_name" --private --source="$root" --remote=origin --push; then
+    warn "GitHub repository creation did not complete. This project remains local with no origin."
+    return 0
+  fi
+  repository=$(gh repo view --json nameWithOwner,url --jq '.nameWithOwner + " " + .url' 2>/dev/null || true)
+  [[ -n "$repository" ]] && ok "Private participant repository: $repository"
 }
 
 SRC_DIR="${VIBE_SETUP_SOURCE_DIR:-$DEFAULT_SRC_DIR}"
@@ -1366,15 +1417,16 @@ while true; do
   DESTINATION_STATE=$(destination_state "$PROJECT_ROOT")
   case "$DESTINATION_STATE" in
     absent|empty)
-      checkout_template "$PROJECT_ROOT" "$DESTINATION_STATE"
+      copy_template_worktree "$PROJECT_ROOT" "$DESTINATION_STATE"
+      initialize_participant_repository "$PROJECT_ROOT"
       break
       ;;
     complete)
-      ok "The approved template is already complete at this root."
+      ok "The independent participant repository is already complete at this root."
       break
       ;;
-    incomplete)
-      choice="${VIBE_SETUP_EXISTING_ACTION:-$(gum choose "Resume the interrupted checkout" "Use an alternate destination" "Abort without changes")}" # participant choice
+    legacy)
+      choice="${VIBE_SETUP_EXISTING_ACTION:-$(gum choose "Convert the unchanged template checkout" "Use an alternate destination" "Abort without changes")}" # participant choice
       ;;
     unrelated|unsafe)
       warn "The destination is nonempty and is not this approved template."
@@ -1383,7 +1435,13 @@ while true; do
   esac
 
   case "$choice" in
-    "Resume the interrupted checkout") checkout_template "$PROJECT_ROOT" incomplete; break ;;
+    "Convert the unchanged template checkout")
+      if ! convert_legacy_template_checkout "$PROJECT_ROOT"; then
+        fail "The existing checkout is not safe to convert automatically. Its history and remotes were left unchanged."
+        exit 1
+      fi
+      break
+      ;;
     "Use an alternate destination")
       SRC_DIR=$(resolve_destination "$(prompt_value "Source folder: " "$SRC_DIR")")
       PROJECT_NAME=$(prompt_value "Project name: " "$PROJECT_NAME")
@@ -1404,11 +1462,15 @@ done
 ok "Source folder confirmed: $SRC_DIR"
 ok "Project root verified: $PROJECT_ROOT"
 ok "Template commit verified: $TEMPLATE_COMMIT"
-PARTICIPANT_BRANCH=$(ensure_participant_branch "$PROJECT_ROOT")
+PARTICIPANT_BRANCH=$(git -C "$PROJECT_ROOT" symbolic-ref --short HEAD)
 ok "Development branch ready: $PARTICIPANT_BRANCH"
 
 if [[ "${VIBE_SETUP_DESTINATION_ONLY:-0}" == "1" ]]; then
   exit 0
+fi
+
+if [[ -z "$(git -C "$PROJECT_ROOT" remote get-url origin 2>/dev/null || true)" ]]; then
+  create_participant_repository "$PROJECT_ROOT" "$PROJECT_NAME"
 fi
 
 # Create the local diagnostic artifacts before the concise participant handoff.

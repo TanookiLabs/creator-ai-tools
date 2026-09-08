@@ -4,8 +4,8 @@
   "run": { "id": "2f4fc92d-f3c6-4d57-b12a-b4ed1dde1d9a", "sequence": 1 },
   "application": {
     "root": "/Users/participant/Documents/src/my-first-app",
-    "repository": "https://github.com/TanookiLabs/creator-ai-tools",
-    "commit": "0393501676cf5f3751089699eafb5090411ff8c7",
+    "repository": "local-only",
+    "commit": "d2a3f8b69aee66c81a2aa1bcb12a88f3cf8a4a11",
     "instructions": ["CLAUDE.md", "README.md", "docs/quality-verification.md"]
   },
   "provenance": {

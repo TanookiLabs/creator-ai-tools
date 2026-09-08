@@ -13,16 +13,23 @@ database URLs or secret values into chat.
 
 ## Discover and resume
 
-At the beginning of every invocation, rediscover Git root, branch, commit,
-working-tree status, remotes, Vercel authentication, linked project/team,
-Postgres integration, production variable names, current production deployment,
-canonical domain, and migration status where that can be checked safely. Do not
-assume a prior command completed. Resume from the first incomplete step.
+At the beginning of every invocation, rediscover Git root, branch, commit, working-tree status, remotes, Vercel authentication, linked project/team, Postgres integration, production variable names, current production deployment, canonical domain, and migration status where that can be checked safely. Do not restart or stop local development servers during discovery. Resume from the first incomplete step.
 
-Before a provider mutation, confirm the writable `origin` is not
-`TanookiLabs/creator-ai-tools`, identify the participant repository, report the
-branch and full commit, and stop for unexplained working-tree changes. A
-read-only `template` remote is allowed; never push participant work to it.
+Classify findings clearly: a template `origin`, missing participant repository,
+or missing Vercel CLI are repairable; an unchanged starter is a warning for an
+explicitly approved disposable rehearsal; Vercel login and Marketplace terms or
+plan choices require participant action. Stop only for unexplained dirty work,
+a conflicting repository/name, ambiguous ownership, secret mapping ambiguity,
+or a failed migration.
+
+Never push to `TanookiLabs/creator-ai-tools`. If it is `origin`, rename it to
+`template`, set its push URL to `DISABLED`, then create a participant-owned
+private repository with `gh repo create <name> --private --source=. --remote=origin --push`
+after the deployment request authorizes that repair. Resume discovery after
+confirming its owner and URL. Do not overwrite, repoint, or infer an occupied
+repository; leave origin absent and ask for a name/owner choice instead. A
+read-only `template` remote is allowed. If participant history might be
+rewritten, stop rather than repairing it automatically.
 
 ## Participant-controlled actions
 
@@ -43,22 +50,23 @@ verified canonical HTTPS production origin belonging to the selected project.
 
 ## Validate, confirm, mutate
 
-Run focused tests, lint, type checking, Prisma validation with safe injected
-configuration, and build checks appropriate to the change. Confirm migration
-files are committed and determine pending migrations without changing schema.
+Run focused tests, lint, type checking, Prisma validation with safe injected configuration, and build checks appropriate to the change. Use the ephemeral CLI as `npx --yes vercel@latest ...`; do not add a dependency or globally install it. Record the resolved `npx --yes vercel@latest --version` result in the rehearsal report. Confirm migration files are committed and determine pending migrations without changing schema. Warn “This appears to be an unchanged starter application” when applicable; include it in the final summary, but continue an explicitly approved disposable rehearsal.
 
 Before mutations, show one concise non-secret summary: repository and commit,
-Vercel project, Postgres integration, configured variable names, canonical
-production URL, and migration status. Ask once: “Continue with the production
-migration and deployment?” A general affirmative answer is sufficient.
+repository repair if needed, Vercel project, Postgres integration, configured
+variable names, canonical production URL, starter warning, and migration
+status. Ask once: “Continue with the production migration and deployment?” A
+general affirmative answer authorizes the listed repository repair,
+configuration, reviewed migration, and deployment.
 
 After confirmation, run the reviewed migration once through the selected
 Vercel project's production environment, then deploy the reviewed commit. The
-rehearsal assumption is `vercel env run -e production -- npm run db:migrate`;
-verify that exact CLI behavior during the disposable rehearsal before treating
-it as supported. Do not print, export, or copy production values while running
-it. Never use `prisma db push`, reset, destructive SQL, migration generation,
-forced deployment flags, or a retry/improvised repair after migration failure.
+rehearsal assumption is `npx --yes vercel@latest env run -e production -- npm
+run db:migrate`; verify that exact CLI behavior during the disposable rehearsal
+before treating it as supported. Do not print, export, or copy production
+values while running it. Never use `prisma db push`, reset, destructive SQL,
+migration generation, forced deployment flags, or a retry/improvised repair
+after migration failure.
 
 ## Verify and stop
 
@@ -70,6 +78,5 @@ create an account without participant approval.
 
 On migration, deployment, or smoke failure, make no further provider or
 database mutation. Give a concise redacted failure summary and ask the
-participant how to proceed. Record the resolved Vercel CLI version in the
-disposable rehearsal report; do not add a deployment dependency or public
+participant how to proceed. Do not add a deployment dependency or public
 deployment script to this repository.

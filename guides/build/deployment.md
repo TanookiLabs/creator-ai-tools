@@ -9,6 +9,14 @@ repository, Vercel project, Postgres integration, production variable names,
 canonical domain, and migration state on every run. It never relies on a prior
 attempt as evidence that an action completed.
 
+If the starter template is still `origin`, the assistant treats it as a
+repairable setup issue: it makes the template fetch-only, creates a private
+participant repository after the final authorization, and never pushes to the
+template. An unchanged starter is shown as a warning but may proceed for an
+explicitly approved disposable rehearsal. Discovery never restarts a local dev
+server, and Vercel commands use ephemeral `npx --yes vercel@latest` rather
+than a global installation.
+
 The participant controls Vercel login/OAuth, Marketplace provider terms and
 plan selection, and one final confirmation after seeing the repository, commit,
 project, database integration, variable names, HTTPS origin, and migration

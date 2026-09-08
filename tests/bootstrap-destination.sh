@@ -14,6 +14,8 @@ sed -n '/^resolve_destination() {/,/^SRC_DIR=/p' "$setup" | sed '$d' >> "$test_r
 # shellcheck source=/dev/null
 source "$test_root/functions.sh"
 info() { :; }
+warn() { :; }
+ok() { :; }
 fail() { printf '%s\n' "$*" >&2; }
 
 mkdir "$test_root/source"
@@ -32,6 +34,8 @@ git -C "$test_root/source" branch -M main
 TEMPLATE_REPOSITORY="$test_root/source"
 SOURCE_BRANCH=main
 TEMPLATE_COMMIT=""
+export GIT_AUTHOR_NAME=Test GIT_AUTHOR_EMAIL=test@example.invalid
+export GIT_COMMITTER_NAME=Test GIT_COMMITTER_EMAIL=test@example.invalid
 
 # Resolve main once, then retain that exact checkout commit for this run.
 resolve_main_commit
@@ -50,13 +54,70 @@ test "$(resolve_destination "$test_root/paths/new/../project")" = "$expected_pat
 
 root="$test_root/Documents/src/my-app"
 test "$(destination_state "$root")" = absent
-checkout_template "$root" absent
+copy_template_worktree "$root" absent
+initialize_participant_repository "$root"
 test "$(destination_state "$root")" = complete
-test "$(git -C "$root" rev-parse HEAD)" = "$initial_template_commit"
 template_markers_are_valid "$root"
 grep -F 'Use this current README.' "$root/README.md" >/dev/null
-test "$(ensure_participant_branch "$root")" = participant-work
 test "$(git -C "$root" symbolic-ref --short HEAD)" = participant-work
+test "$(git -C "$root" rev-list --count HEAD)" -eq 1
+test "$(git -C "$root" remote get-url origin 2>/dev/null || true)" = ""
+test "$(git -C "$root" remote get-url template)" = "$TEMPLATE_REPOSITORY"
+test "$(git -C "$root" remote get-url --push template)" = DISABLED
+if git -C "$root" push template participant-work >/dev/null 2>&1; then
+  echo "The template remote accepted a participant push." >&2
+  exit 1
+fi
+test "$(sed -n '1p' "$root/.git/vibe-template-provenance")" = "$TEMPLATE_REPOSITORY"
+test "$(sed -n '2p' "$root/.git/vibe-template-provenance")" = "$initial_template_commit"
+
+# Skipped GitHub authentication keeps the independent local repository and no
+# writable origin. A later authenticated run may create the private origin.
+GITHUB_VERIFIED=false
+GH_USER=""
+create_participant_repository "$root" my-app
+test "$(git -C "$root" remote get-url origin 2>/dev/null || true)" = ""
+
+mkdir "$test_root/bin"
+cat > "$test_root/bin/gh" <<'EOF'
+#!/bin/sh
+if [ "$1" = repo ] && [ "$2" = view ] && [ "$3" = test-user/my-app ]; then
+  exit 1
+fi
+if [ "$1" = repo ] && [ "$2" = create ]; then
+  case " $* " in
+    *" --private "*) ;;
+    *) exit 1 ;;
+  esac
+  case " $* " in
+    *" --remote=origin "*) ;;
+    *) exit 1 ;;
+  esac
+  case " $* " in
+    *" --push "*) ;;
+    *) exit 1 ;;
+  esac
+  for arg in "$@"; do
+    case "$arg" in --source=*) root=${arg#--source=} ;; esac
+  done
+  git -C "$root" remote add origin https://github.com/test-user/my-app.git
+  exit 0
+fi
+if [ "$1" = repo ] && [ "$2" = view ]; then
+  printf 'test-user/my-app https://github.com/test-user/my-app\n'
+  exit 0
+fi
+exit 1
+EOF
+chmod +x "$test_root/bin/gh"
+PATH="$test_root/bin:$PATH"
+GITHUB_VERIFIED=true
+GH_USER=test-user
+VIBE_SETUP_ASSUME_YES=1
+create_participant_repository "$root" my-app
+test "$(git -C "$root" remote get-url origin)" = https://github.com/test-user/my-app.git
+test "$(git -C "$root" remote get-url template)" = "$TEMPLATE_REPOSITORY"
+test "$(git -C "$root" remote get-url --push template)" = DISABLED
 
 # An unrelated nonempty destination is classified without changing its data.
 unrelated="$test_root/Documents/src/existing"
@@ -66,27 +127,29 @@ before=$(shasum -a 256 "$unrelated/keep.txt")
 test "$(destination_state "$unrelated")" = unrelated
 test "$(shasum -a 256 "$unrelated/keep.txt")" = "$before"
 
-# A fetch interruption leaves a provenance marker and is safely resumable.
-partial="$test_root/Documents/src/partial"
-mkdir "$partial"
-git -C "$partial" init --quiet
-git -C "$partial" remote add origin "$TEMPLATE_REPOSITORY"
-printf '%s\n%s\n' "$TEMPLATE_REPOSITORY" "$TEMPLATE_COMMIT" > "$partial/.git/vibe-template-checkout"
-test "$(destination_state "$partial")" = incomplete
-checkout_template "$partial" incomplete
-test "$(destination_state "$partial")" = complete
+# A clean legacy template checkout can be explicitly converted, but any
+# participant commit or worktree change prevents history/remotes from changing.
+legacy="$test_root/Documents/src/legacy"
+git clone --quiet "$TEMPLATE_REPOSITORY" "$legacy"
+git -C "$legacy" checkout --quiet --detach "$initial_template_commit"
+test "$(destination_state "$legacy")" = legacy
+convert_legacy_template_checkout "$legacy"
+test "$(git -C "$legacy" symbolic-ref --short HEAD)" = participant-work
+test "$(git -C "$legacy" rev-list --count HEAD)" -eq 1
+test "$(git -C "$legacy" remote get-url origin 2>/dev/null || true)" = ""
+test "$(git -C "$legacy" remote get-url template)" = "$TEMPLATE_REPOSITORY"
+test "$(git -C "$legacy" remote get-url --push template)" = DISABLED
 
-# A moving main ref is never accepted in place of the initially pinned commit.
-git -C "$root" fetch --quiet origin HEAD
-git -C "$root" checkout --quiet --detach FETCH_HEAD
-test "$(destination_state "$root")" = unrelated
-
-# A forged/incomplete marker with the wrong origin remains unrelated.
-forged="$test_root/Documents/src/forged"
-mkdir "$forged"
-git -C "$forged" init --quiet
-git -C "$forged" remote add origin "$test_root/other"
-printf '%s\n%s\n' "$TEMPLATE_REPOSITORY" "$TEMPLATE_COMMIT" > "$forged/.git/vibe-template-checkout"
-test "$(destination_state "$forged")" = unrelated
+git -C "$legacy" config user.name Test
+git -C "$legacy" config user.email test@example.invalid
+printf 'participant change\n' > "$legacy/participant.txt"
+git -C "$legacy" add participant.txt
+git -C "$legacy" commit --quiet -m participant-change
+legacy_head=$(git -C "$legacy" rev-parse HEAD)
+if convert_legacy_template_checkout "$legacy"; then
+  echo "Existing participant history was rewritten." >&2
+  exit 1
+fi
+test "$(git -C "$legacy" rev-parse HEAD)" = "$legacy_head"
 
 echo "Bootstrap destination checks passed."

@@ -26,7 +26,12 @@ git -C "$project" commit --quiet -m template
 
 TEMPLATE_REPOSITORY="https://github.com/TanookiLabs/creator-ai-tools"
 TEMPLATE_COMMIT=$(git -C "$project" rev-parse HEAD)
-git -C "$project" remote add origin "$TEMPLATE_REPOSITORY"
+git -C "$project" commit --allow-empty --quiet -m 'Initialize project from Creator AI Tools'
+APPLICATION_COMMIT=$(git -C "$project" rev-parse HEAD)
+git -C "$project" branch -M participant-work
+git -C "$project" remote add template "$TEMPLATE_REPOSITORY"
+git -C "$project" remote set-url --push template DISABLED
+printf '%s\n%s\n' "$TEMPLATE_REPOSITORY" "$TEMPLATE_COMMIT" > "$project/.git/vibe-template-provenance"
 PROJECT_ROOT=$(cd "$project" && pwd -P)
 CONTRACT_VERSION=1.0
 RUN_STARTED_AT=2026-09-06T12:00:00Z
@@ -58,9 +63,9 @@ test -f "$receipt"
 test -f "$handoff"
 grep -F '"contract_version": "1.0"' "$receipt" >/dev/null
 grep -F "\"root\": \"$PROJECT_ROOT\"" "$receipt" >/dev/null
-grep -F "\"commit\": \"$TEMPLATE_COMMIT\"" "$receipt" >/dev/null
+grep -F "\"commit\": \"$APPLICATION_COMMIT\"" "$receipt" >/dev/null
 grep -F '"source_branch": "main"' "$receipt" >/dev/null
-node -e 'const r=require(process.argv[1]); if (r.provenance.bootstrap.commit || r.provenance.bootstrap.source_branch !== "main" || r.provenance.template.source_branch !== "main" || r.provenance.template.commit !== r.application.commit) throw new Error("main provenance is inaccurate")' "$receipt"
+node -e 'const r=require(process.argv[1]); if (r.application.repository !== "local-only" || r.provenance.bootstrap.commit || r.provenance.bootstrap.source_branch !== "main" || r.provenance.template.source_branch !== "main" || r.provenance.template.commit !== process.argv[2] || r.application.commit !== process.argv[3]) throw new Error("participant repository provenance is inaccurate")' "$receipt" "$TEMPLATE_COMMIT" "$APPLICATION_COMMIT"
 grep -F '"status": "success"' "$receipt" >/dev/null
 grep -F '"blocking": false' "$receipt" >/dev/null
 grep -F '"evidence_code": "folder_selection_unverified"' "$receipt" >/dev/null

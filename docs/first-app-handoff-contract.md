@@ -10,9 +10,12 @@ Claude, GitHub, database, filesystem, or deployment actions. Authentication,
 folder access, permission prompts, and any repair remain participant-controlled.
 
 Setup is downloaded from the repository's `main` branch. Once Git is available,
-the installer resolves `origin/main` exactly once and uses that commit for the
-starter checkout throughout the run. The downloaded script is identified by its
-SHA-256 digest; it does not claim an independently verified Git commit.
+the installer resolves `origin/main` exactly once, retrieves that source commit,
+copies its working files without `.git`, and initializes an independent
+`participant-work` repository. The template is retained only as a fetch-only
+`template` remote with its push URL disabled. The downloaded script is
+identified by its SHA-256 digest; it does not claim an independently verified
+Git commit.
 
 ## Files and ownership
 
@@ -105,11 +108,13 @@ records that same repository and branch with the resolved immutable checkout
 commit. Optional `source_url` must be credential-free.
 
 The installer digest identifies only the downloaded bytes. The template commit
-is the actual verified checkout, pinned after resolving `origin/main` once.
+is the verified source material pinned after resolving `origin/main` once; it
+is not the participant repository's initial commit.
 
-The application object records the exact verified `root`, repository identity,
-checked-out commit, and links to durable repository instructions as relative
-paths. It must never contain a home-directory listing or environment dump.
+The application object records the exact verified `root`, participant repository
+identity and initial commit, or `local-only` when GitHub authentication was
+skipped. The template repository and SHA remain in provenance. It must never
+contain a home-directory listing or environment dump.
 
 ## Timestamps and deterministic reruns
 

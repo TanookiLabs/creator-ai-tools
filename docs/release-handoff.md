@@ -98,6 +98,12 @@ comes first; Vercel and Git remain the source of current state.
 The participant personally completes Vercel identity and any Marketplace
 provider agreement or plan selection. The assistant reuses existing project,
 database, and secret configuration where safe; it records names, not values.
+It treats a template `origin`, missing participant repository, and missing
+Vercel CLI as repairable: Creator AI Tools is never a writable remote, a
+private participant origin is created only under the final authorization, and
+the CLI is invoked ephemerally with `npx --yes vercel@latest`. An unchanged
+starter is recorded as a warning but can proceed for an explicitly approved
+disposable rehearsal.
 After non-mutating validation, committed SQL review, drift checks, and recovery
 ownership checks, it presents one concise non-secret summary and asks once
 before configuration changes, the reviewed migration, and deployment. A refusal
