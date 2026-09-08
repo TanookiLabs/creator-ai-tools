@@ -5,8 +5,8 @@ description: Experimentally deploy this Next.js application to a participant-con
 
 # Experimental Vercel deployment
 
-This is an assistant-led Vercel workflow rehearsed on participant-owned
-resources. The canonical path is local `main` → GitHub `main` → Vercel production.
+This is an assistant-led Vercel workflow proven in a live participant-owned
+Vercel/Neon rehearsal. The canonical path is local `main` → GitHub `main` → Vercel production.
 The participant can start with “Deploy this application to Vercel” or
 `/deploy-production`; they do not run a repository deployment command or copy
 database URLs or secret values into chat.

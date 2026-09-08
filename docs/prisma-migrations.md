@@ -30,8 +30,8 @@ names:
 - `BETTER_AUTH_SECRET`
 - `BETTER_AUTH_URL`
 
-Before setting those production variables, use Vercel Marketplace discovery in
-a **disposable rehearsal** to prove that `DATABASE_URL` is pooled and
+Before setting those production variables, use the completed live
+participant-owned Vercel Marketplace rehearsal as evidence that `DATABASE_URL` is pooled and
 `DIRECT_URL` is direct for the selected Postgres integration. Treat a missing,
 differently selected, unrehearsed, or drifted pair as a stop condition. Do not
 infer the target from a connection URL or expose provider output during
@@ -49,8 +49,7 @@ env -u DATABASE_URL -u DIRECT_URL -u BETTER_AUTH_URL -u BETTER_AUTH_SECRET \
   npx --yes vercel@latest env run -e production -- npm run db:migrate
 ```
 
-This exact CLI behavior is unverified until the disposable rehearsal; do not
-substitute a preview/development environment, print or copy values, or use a
+Do not substitute a preview/development environment, print or copy values, or use a
 different command after failure. If confirmation is withdrawn, migration fails,
 drift is found, or any requirement is missing, stop deployment. Do not use
 `db:push`, reset, seed, rollback SQL, or destructive repair. Recovery is a

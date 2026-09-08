@@ -1146,7 +1146,7 @@ configure_github_git_identity() {
     fail "GitHub identity is unavailable. Sign in with gh auth login, then rerun setup before creating commits."
     return 1
   fi
-  candidate=$(gh api user/emails --jq '.[] | select(.primary == true) | .email' 2>/dev/null | head -n 1 || true)
+  candidate=$(gh api user/emails --jq '.[] | select(.primary == true) | .email' 2>/dev/null || true)
   if ! valid_git_email "$candidate"; then candidate="${GH_USER_ID}+${GH_USER}@users.noreply.github.com"; fi
   valid_git_email "$candidate" || { fail "Git identity email is invalid. Sign in to GitHub and rerun setup."; return 1; }
   git config --global user.email "$candidate"

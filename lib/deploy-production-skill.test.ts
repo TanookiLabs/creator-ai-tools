@@ -33,6 +33,14 @@ test("the deployment skill protects secrets and keeps one final mutation boundar
   assert.match(skill, /rehearsal assumption/i)
 })
 
+test("the Git-backed Vercel monitor stops on every terminal provider state", () => {
+  assert.match(skill, /bounded interval/i)
+  assert.match(skill, /`READY`, `ERROR`, `CANCELED`, and `BLOCKED` are terminal/i)
+  assert.match(skill, /provider reason/i)
+  assert.match(skill, /stop without retry/i)
+  assert.match(skill, /without filtering live errors/i)
+})
+
 test("every relevant document keeps the workflow experimental and one-confirmation only", () => {
   for (const [path, contents] of Object.entries(documents)) {
     assert.doesNotMatch(contents, /(^|\n)#+\s+Supported production sequence|only supported assistant-led production/im, path)
