@@ -71,6 +71,16 @@ fi
 test "$(sed -n '1p' "$root/.git/vibe-template-provenance")" = "$TEMPLATE_REPOSITORY"
 test "$(sed -n '2p' "$root/.git/vibe-template-provenance")" = "$initial_template_commit"
 
+# GitHub CLI's --remote=origin form includes .git. Every permitted spelling
+# has one credential-free canonical HTTPS identity for marker and receipt use.
+test "$(canonical_https_repository_url ' https://github.com/test-user/my-app ')" = https://github.com/test-user/my-app
+test "$(canonical_https_repository_url 'https://github.com/test-user/my-app.git')" = https://github.com/test-user/my-app
+test "$(canonical_https_repository_url 'https://github.com/test-user/my-app/')" = https://github.com/test-user/my-app
+if canonical_https_repository_url 'https://token@github.com/test-user/my-app' >/dev/null; then
+  echo "A credential-bearing repository URL was accepted." >&2
+  exit 1
+fi
+
 # Skipped GitHub authentication keeps the independent local repository and no
 # writable origin. A later authenticated run may create the private origin.
 GITHUB_VERIFIED=false
@@ -107,6 +117,10 @@ if [ "$1" = repo ] && [ "$2" = create ]; then
   git init --bare --quiet "$FAKE_GH_REPOSITORIES/$name.git"
   touch "$FAKE_GH_STATE/$name"
   git -C "$root" remote add origin "https://github.com/test-user/$name.git"
+  if [ "$FAKE_GH_CREATE_PUSH_FAIL" = persistent ]; then
+    git -C "$root" remote set-url --push origin DISABLED
+    exit 1
+  fi
   if [ "$FAKE_GH_CREATE_PUSH_FAIL" = 1 ]; then
     exit 1
   fi
@@ -127,6 +141,7 @@ VIBE_SETUP_ASSUME_YES=1
 configure_fake_github "$root"
 create_participant_repository "$root" my-app
 test "$(git -C "$root" config --get remote.origin.url)" = https://github.com/test-user/my-app.git
+test "$(sed -n '2p' "$root/.git/vibe-participant-repository")" = https://github.com/test-user/my-app
 test "$(git -C "$root" ls-remote --heads origin refs/heads/participant-work | awk 'NR == 1 { print $1 }')" = "$(git -C "$root" rev-parse participant-work)"
 test "$(git -C "$root" remote get-url template)" = "$TEMPLATE_REPOSITORY"
 test "$(git -C "$root" remote get-url --push template)" = DISABLED
@@ -146,6 +161,16 @@ test "$(git -C "$partial" ls-remote --heads origin refs/heads/participant-work |
 git -C "$partial" remote remove origin
 create_participant_repository "$partial" partial-app
 test "$(git -C "$partial" config --get remote.origin.url)" = https://github.com/test-user/partial-app.git
+
+# A repository whose initial push and safe retry both fail retains origin for
+# recovery but never receives the verified participant-repository marker.
+incomplete="$test_root/Documents/src/incomplete-app"
+copy_template_worktree "$incomplete" absent
+initialize_participant_repository "$incomplete"
+configure_fake_github "$incomplete"
+FAKE_GH_CREATE_PUSH_FAIL=persistent create_participant_repository "$incomplete" incomplete-app
+test "$(git -C "$incomplete" config --get remote.origin.url)" = https://github.com/test-user/incomplete-app.git
+test ! -e "$incomplete/.git/vibe-participant-repository"
 
 # A participant-owned remote branch with a different commit is never forced or
 # overwritten during a rerun.

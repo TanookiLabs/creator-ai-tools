@@ -292,11 +292,21 @@ wait_for_postgres_connection() {
 # bootstrap invocation downloads one file, so contract production must not
 # depend on an unverified helper from the participant's machine or checkout.
 produce_first_app_contract() {
+  local application_repository="local-only" marker_repository origin_repository local_commit remote_commit
+  if [[ -f "$PROJECT_ROOT/.git/vibe-participant-repository" ]]; then
+    marker_repository=$(canonical_https_repository_url "$(sed -n '2p' "$PROJECT_ROOT/.git/vibe-participant-repository")" 2>/dev/null || true)
+    origin_repository=$(canonical_https_repository_url "$(git -C "$PROJECT_ROOT" config --get remote.origin.url 2>/dev/null || true)" 2>/dev/null || true)
+    local_commit=$(git -C "$PROJECT_ROOT" rev-parse participant-work 2>/dev/null || true)
+    remote_commit=$(git -C "$PROJECT_ROOT" ls-remote --heads origin refs/heads/participant-work 2>/dev/null | awk 'NR == 1 { print $1 }')
+    if [[ -n "$marker_repository" && "$marker_repository" == "$origin_repository" && "$remote_commit" == "$local_commit" ]]; then
+      application_repository="$marker_repository"
+    fi
+  fi
   RECEIPT_ROOT="$PROJECT_ROOT" \
   RECEIPT_CONTRACT_VERSION="$CONTRACT_VERSION" \
   RECEIPT_RUN_STARTED_AT="$RUN_STARTED_AT" \
   RECEIPT_REPOSITORY="$TEMPLATE_REPOSITORY" \
-  RECEIPT_APPLICATION_REPOSITORY="$(git -C "$PROJECT_ROOT" remote get-url origin 2>/dev/null || printf 'local-only')" \
+  RECEIPT_APPLICATION_REPOSITORY="$application_repository" \
   RECEIPT_APPLICATION_COMMIT="$(git -C "$PROJECT_ROOT" rev-parse HEAD)" \
   RECEIPT_SOURCE_BRANCH="$SOURCE_BRANCH" \
   RECEIPT_INSTALLER_SHA256="$(shasum -a 256 "$0" | awk '{print $1}')" \
@@ -345,21 +355,25 @@ function capability(id, verified, summary, version, recovery) {
 function requireMatch(value, expression, name) {
   if (!expression.test(value)) throw new Error(`Receipt ${name} is invalid.`);
 }
+function canonicalHttpsRepository(value, name) {
+  const normalized = String(value || "").trim().replace(/\/+$/, "").replace(/\.git$/, "").replace(/\/+$/, "");
+  requireMatch(normalized, /^https:\/\/[^/?#@]+\/[^/?#]+\/[^/?#]+$/, name);
+  return normalized;
+}
 if (!path.isAbsolute(root) || root === path.parse(root).root) throw new Error("Receipt application root is unsafe.");
-const repository = env.RECEIPT_APPLICATION_REPOSITORY || "local-only";
+const repository = env.RECEIPT_APPLICATION_REPOSITORY === "local-only" ? "local-only" : canonicalHttpsRepository(env.RECEIPT_APPLICATION_REPOSITORY, "application repository");
 const commit = env.RECEIPT_APPLICATION_COMMIT;
 const templateRepository = env.RECEIPT_TEMPLATE_REPOSITORY;
 const templateCommit = env.RECEIPT_TEMPLATE_COMMIT;
-if (repository !== "local-only") requireMatch(repository, /^https:\/\/[^/?#@]+\/[^/?#]+\/[^/?#]+$/, "application repository");
 requireMatch(commit, /^[0-9a-f]{40}$/, "application commit");
-requireMatch(templateRepository, /^https:\/\/[^/?#@]+\/[^/?#]+\/[^/?#]+$/, "template repository");
+canonicalHttpsRepository(templateRepository, "template repository");
 requireMatch(templateCommit, /^[0-9a-f]{40}$/, "template commit");
 requireMatch(env.RECEIPT_SOURCE_BRANCH, /^main$/, "source branch");
 requireMatch(env.RECEIPT_INSTALLER_SHA256, /^[0-9a-f]{64}$/, "installer digest");
 if (fs.realpathSync(root) !== root) throw new Error("Receipt root does not match the physical checkout root.");
 if (require("node:child_process").execFileSync("git", ["-C", root, "rev-parse", "HEAD"], { encoding: "utf8" }).trim() !== commit) throw new Error("Receipt commit does not match the checkout.");
 if (repository !== "local-only") {
-  const origin = require("node:child_process").execFileSync("git", ["-C", root, "remote", "get-url", "origin"], { encoding: "utf8" }).trim().replace(/\.git$/, "");
+  const origin = canonicalHttpsRepository(require("node:child_process").execFileSync("git", ["-C", root, "config", "--get", "remote.origin.url"], { encoding: "utf8" }), "origin repository");
   if (origin !== repository) throw new Error("Receipt repository does not match the checkout.");
 }
 const templateMarker = fs.readFileSync(path.join(root, ".git", "vibe-template-provenance"), "utf8").trim().split(/\r?\n/);
@@ -1366,9 +1380,20 @@ participant_repository_details() {
   gh repo view "$GH_USER/$project_name" --json nameWithOwner,url --jq '.nameWithOwner + "|" + .url' 2>/dev/null || true
 }
 
+canonical_https_repository_url() {
+  local repository="$1"
+  repository="${repository#"${repository%%[![:space:]]*}"}"
+  repository="${repository%"${repository##*[![:space:]]}"}"
+  repository="${repository%/}"
+  repository="${repository%.git}"
+  repository="${repository%/}"
+  [[ "$repository" =~ ^https://[^/?#@]+/[^/?#]+/[^/?#]+$ ]] || return 1
+  printf '%s\n' "$repository"
+}
+
 participant_origin_is_owned() {
   local root="$1" project_name="$2" origin details expected_name expected_url
-  origin=$(git -C "$root" config --get remote.origin.url 2>/dev/null || true)
+  origin=$(canonical_https_repository_url "$(git -C "$root" config --get remote.origin.url 2>/dev/null || true)" 2>/dev/null || true)
   details=$(participant_repository_details "$project_name")
   expected_name="$GH_USER/$project_name"
   expected_url="https://github.com/$expected_name"
@@ -1377,15 +1402,17 @@ participant_origin_is_owned() {
 }
 
 record_participant_repository() {
-  local root="$1" project_name="$2"
-  printf '%s\n%s\n' "$GH_USER/$project_name" "https://github.com/$GH_USER/$project_name" > "$root/.git/vibe-participant-repository"
+  local root="$1" project_name="$2" repository
+  repository=$(canonical_https_repository_url "https://github.com/$GH_USER/$project_name")
+  printf '%s\n%s\n' "$GH_USER/$project_name" "$repository" > "$root/.git/vibe-participant-repository"
 }
 
 participant_repository_marker_matches() {
-  local root="$1" project_name="$2"
+  local root="$1" project_name="$2" repository
+  repository=$(canonical_https_repository_url "$(sed -n '2p' "$root/.git/vibe-participant-repository" 2>/dev/null || true)" 2>/dev/null || true)
   [[ -f "$root/.git/vibe-participant-repository" ]] &&
     [[ "$(sed -n '1p' "$root/.git/vibe-participant-repository")" == "$GH_USER/$project_name" ]] &&
-    [[ "$(sed -n '2p' "$root/.git/vibe-participant-repository")" == "https://github.com/$GH_USER/$project_name" ]]
+    [[ "$repository" == "https://github.com/$GH_USER/$project_name" ]]
 }
 
 ensure_participant_branch_remote() {
@@ -1449,7 +1476,6 @@ create_participant_repository() {
   if ! git -C "$root" remote get-url origin >/dev/null 2>&1; then
     git -C "$root" remote add origin "$expected_url.git"
   fi
-  record_participant_repository "$root" "$project_name"
   if (( creation_status != 0 )); then
     warn "GitHub created the private repository, but its initial push did not complete. Origin is preserved and setup will resume it safely."
   fi
