@@ -6,14 +6,9 @@ This is a ready-to-use starter for building and launching an app with Claude.
 It includes authentication, a database, a polished interface, and Vercel
 deployment support.
 
-If you just want the shortest path:
 
-1. Bootstrap the starter.
-2. Read the guide that matches what you are trying to do.
-3. Build the first useful version.
-4. Request an assistant-led production release when you are ready.
 
-You need a [Claude account](https://claude.ai) and a [GitHub account](https://github.com/signup).
+You need a [Claude account https://claude.ai ](https://claude.ai) and a [GitHub account https://github.com/signup](https://github.com/signup).
 
 Open Terminal, paste this command, and press Return:
 
