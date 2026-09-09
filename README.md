@@ -31,6 +31,13 @@ locally; and save your work to your GitHub repository.
 
 > Make a tool that generates social media campaign ideas.
 
+## Plan your work
+
+Turn an idea into a clear, reviewed build plan before implementation:
+
+- [Requirements template](guides/requirements-template.md) — define the problem, scope, requirements, and acceptance criteria.
+- [Implementation plan template](guides/implementation-plan-template.md) — break approved requirements into ordered, testable tasks.
+
 ## Guides
 
 Use these guides when you want to understand or complete a part of the setup
