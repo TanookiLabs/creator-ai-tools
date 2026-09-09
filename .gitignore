@@ -45,3 +45,7 @@ next-env.d.ts
 # Generated first-app bootstrap state (local support data; never commit)
 /FIRST_APP_HANDOFF.md
 /.first-app/
+
+# slides (Slidev deck)
+/slides/node_modules
+/slides/dist
