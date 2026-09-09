@@ -2,6 +2,12 @@
 
 Use this workflow to turn this starter into a separately owned project without overwriting the existing setup guidance in the [README](../../README.md).
 
+For an opt-in, step-by-step alternative to the automated macOS installer, see
+[Manual macOS setup](../prerequisites/manual-macos-setup.md).
+
+For the equivalent native Windows and Git Bash path, see [Manual Windows
+setup](../prerequisites/manual-windows-setup.md).
+
 ## Prerequisites
 
 - The repository is available locally.

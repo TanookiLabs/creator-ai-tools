@@ -5,6 +5,9 @@ Auth application. The live participant-owned `vercel-test-3` Vercel/Neon
 rehearsal reached READY, applied migrations, served canonical HTTPS, and passed
 browser sign-up, sign-out, sign-in, session persistence, and dashboard access.
 
+To run the equivalent Vercel setup and deployment yourself, follow
+[Manual Vercel deployment](../manual-vercel-deployment.md).
+
 Ask: **“Deploy this application to Vercel.”** The assistant rediscovers the
 repository, Vercel project, Postgres integration, production variable names,
 canonical domain, and migration state on every run. It never relies on a prior

@@ -12,6 +12,30 @@ export const buildGuides = [
     repositoryPath: "guides/build/deployment.md",
   },
   {
+    slug: "manual-vercel-deployment",
+    title: "Deploy to Vercel yourself",
+    description: "Set up Vercel, Neon, Better Auth, migrations, and a Git-backed production deployment manually.",
+    repositoryPath: "guides/manual-vercel-deployment.md",
+  },
+  {
+    slug: "resend-email-setup",
+    title: "Send transactional email with Resend",
+    description: "Plan a secure Resend sender, configuration, Better Auth email flows, and production verification.",
+    repositoryPath: "guides/resend-email-setup.md",
+  },
+  {
+    slug: "vercel-ai-chat",
+    title: "Build a Vercel AI chat",
+    description: "Add a streaming, authenticated AI chat with narrow server-side tools through Vercel AI Gateway.",
+    repositoryPath: "guides/vercel-ai-chat.md",
+  },
+  {
+    slug: "background-agents-with-inngest",
+    title: "Run agents in the background",
+    description: "Use Inngest for durable, user-owned, bounded background agent work and recovery.",
+    repositoryPath: "guides/background-agents-with-inngest.md",
+  },
+  {
     slug: "shopify-opt-in",
     title: "Shopify integration (opt-in)",
     description: "Evaluate and implement a user-owned Shopify connection only when explicitly chosen.",
