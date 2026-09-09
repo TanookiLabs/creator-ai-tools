@@ -32,7 +32,7 @@ export const buildGuides = [
   {
     slug: "background-agents-with-inngest",
     title: "Run agents in the background",
-    description: "Use Inngest for durable, user-owned, bounded background agent work and recovery.",
+    description: "Start durable, user-owned AI agents with safe progress updates, approvals, and recovery.",
     repositoryPath: "guides/background-agents-with-inngest.md",
   },
   {
