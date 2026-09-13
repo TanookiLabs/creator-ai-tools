@@ -12,7 +12,7 @@ You need a [Claude account](https://claude.ai) and a
 Open Terminal, paste this command, and press Return:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/TanookiLabs/creator-ai-tools/main/setup.sh -o /tmp/creator-ai-setup.sh && /bin/bash /tmp/creator-ai-setup.sh
+sudo curl -fsSL https://raw.githubusercontent.com/TanookiLabs/creator-ai-tools/main/setup.sh -o /tmp/creator-ai-setup.sh && /bin/bash /tmp/creator-ai-setup.sh
 ```
 
 Follow the prompts. Setup installs or reuses the tools you need, prepares your
