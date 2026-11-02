@@ -10,11 +10,10 @@ import { useState } from "react"
 const navigation = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/profile", label: "Profile" },
-  { href: "/resources", label: "Build Guides" },
 ] as const
 
 function isCurrentLocation(pathname: string, href: string) {
-  return pathname === href || (href === "/resources" && pathname.startsWith("/resources/"))
+  return pathname === href || pathname.startsWith(href + "/")
 }
 
 export function AuthenticatedShell({ children }: { children: React.ReactNode }) {

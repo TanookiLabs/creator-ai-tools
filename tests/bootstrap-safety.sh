@@ -49,7 +49,7 @@ grep -F 'curl -fsSL https://raw.githubusercontent.com/TanookiLabs/creator-ai-too
 grep -F 'resolve_main_commit() {' "$setup" >/dev/null
 grep -F 'refs/heads/${SOURCE_BRANCH}' "$setup" >/dev/null
 grep -F 'Current template commit available: ${CURRENT_TEMPLATE_COMMIT} from ${SOURCE_BRANCH}' "$setup" >/dev/null
-if search_extended 'VIBE_SETUP_(INSTALLER|TEMPLATE)_COMMIT|bootstrap-v1\.1\.0-rc\.1|resolve_release_commit|source_mode|release_tag' "$setup" "$readme" "$repo_root/docs/first-app-handoff-contract.md"; then
+if search_extended 'VIBE_SETUP_(INSTALLER|TEMPLATE)_COMMIT|bootstrap-v1\.1\.0-rc\.1|resolve_release_commit|source_mode|release_tag' "$setup" "$readme"; then
   echo "Strict release-candidate mechanics remain in active bootstrap sources." >&2
   exit 1
 else

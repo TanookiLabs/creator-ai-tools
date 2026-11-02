@@ -2,9 +2,26 @@
   "version": "0.0.1",
   "configurations": [
     {
+      "name": "app",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
+      "port": 3000
+    },
+    {
       "name": "slides",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["--yes", "pnpm@10", "run", "dev", "--", "--port", "3030"],
+      "runtimeArgs": [
+        "--yes",
+        "pnpm@10",
+        "run",
+        "dev",
+        "--",
+        "--port",
+        "3030"
+      ],
       "cwd": "slides",
       "port": 3030
     }

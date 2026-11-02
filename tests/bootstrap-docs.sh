@@ -6,8 +6,6 @@ cd "$repo_root"
 
 readme=README.md
 desktop_guide=guides/prerequisites/claude-desktop.md
-contract=docs/first-app-handoff-contract.md
-release_inputs=docs/release-inputs.md
 setup=setup.sh
 canonical=https://github.com/TanookiLabs/creator-ai-tools
 
@@ -19,11 +17,9 @@ search_extended() {
   fi
 }
 
-# Check only current participant-facing sources. release-inputs.md intentionally
-# retains obsolete strings as historical audit evidence.
-active_sources=("$readme" "$desktop_guide" CLAUDE.md "$contract" "$setup")
+# Check only current participant-facing sources.
+active_sources=("$readme" "$desktop_guide" CLAUDE.md "$setup")
 grep -F 'TanookiLabs/creator-ai-tools' "$readme" >/dev/null
-grep -F 'TanookiLabs/creator-ai-tools' "$contract" >/dev/null
 grep -F 'TEMPLATE_REPOSITORY="https://github.com/TanookiLabs/creator-ai-tools"' "$setup" >/dev/null
 
 expected_bootstrap_url=https://raw.githubusercontent.com/TanookiLabs/creator-ai-tools/main/setup.sh
@@ -62,7 +58,7 @@ fi
 node <<'NODE'
 const fs = require("node:fs")
 const path = require("node:path")
-const files = ["README.md", "CLAUDE.md", "guides/prerequisites/claude-desktop.md", "docs/first-app-handoff-contract.md"]
+const files = ["README.md", "CLAUDE.md", "guides/prerequisites/claude-desktop.md"]
 const scripts = JSON.parse(fs.readFileSync("package.json", "utf8")).scripts || {}
 for (const file of files) {
   const body = fs.readFileSync(file, "utf8")
@@ -87,15 +83,10 @@ grep -F 'Keychain' "$desktop_guide" >/dev/null
 grep -F 'participant' "$desktop_guide" >/dev/null
 grep -F 'manual' "$desktop_guide" >/dev/null
 
-# The contract, producer, consumer, and examples must stay on the same major.
+# The receipt producer and consumer must stay on the same major.
 grep -F 'CONTRACT_VERSION="1.0"' "$setup" >/dev/null
 grep -F 'SOURCE_BRANCH="main"' "$setup" >/dev/null
 grep -F '/main/setup.sh' "$readme" >/dev/null
-grep -F 'contract version `1.0`' "$contract" >/dev/null
 grep -F 'major version `1`' CLAUDE.md >/dev/null
-for example in docs/contracts/examples/*.json; do
-  test "$(node -p "require('./$example').contract_version")" = 1.0
-done
-grep -F '0393501676cf5f3751089699eafb5090411ff8c7' "$release_inputs" >/dev/null
 
 echo "Bootstrap documentation and release-contract checks passed."
