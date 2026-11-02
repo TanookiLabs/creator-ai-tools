@@ -9,6 +9,8 @@ sed -n '/^configure_github_git_identity() {/,/^}$/p' "$setup" >> "$test_root/fun
 source "$test_root/functions.sh"
 fail() { return 1; }
 HOME="$test_root/home"; export HOME; mkdir "$HOME"
+# setup.sh manages only the email; macOS supplies a name, but CI runners do not.
+git config --global user.name "Test Participant"
 mkdir "$test_root/bin"
 cat > "$test_root/bin/gh" <<'EOF'
 #!/bin/sh
