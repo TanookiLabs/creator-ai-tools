@@ -9,6 +9,21 @@
         "dev"
       ],
       "port": 3000
+    },
+    {
+      "name": "slides",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "--yes",
+        "pnpm@10",
+        "run",
+        "dev",
+        "--",
+        "--port",
+        "3030"
+      ],
+      "cwd": "slides",
+      "port": 3030
     }
   ]
 }

@@ -99,3 +99,5 @@ project.
 - GitHub integration
 - Vercel deployment support
 - Project instructions for Claude
+
+- [Eric’s 201 talk slides](slides/slides.md)

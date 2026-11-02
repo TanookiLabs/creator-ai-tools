@@ -46,3 +46,6 @@ next-env.d.ts
 /FIRST_APP_HANDOFF.md
 /.first-app/
 
+# slides (Slidev deck)
+/slides/node_modules
+/slides/dist
