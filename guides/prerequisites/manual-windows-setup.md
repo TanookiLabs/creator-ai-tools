@@ -234,9 +234,12 @@ password, and database name you chose in step 2:
 ```dotenv
 BETTER_AUTH_SECRET=<paste the generated local value here>
 BETTER_AUTH_URL=http://localhost:3000
-DATABASE_URL=postgresql://my_first_app:<project-role-password>@localhost:5432/my_first_app
-DIRECT_URL=postgresql://my_first_app:<project-role-password>@localhost:5432/my_first_app
+DATABASE_URL=postgresql://my_first_app:<your project role password>@localhost:5432/my_first_app
+DIRECT_URL=postgresql://my_first_app:<your project role password>@localhost:5432/my_first_app
 ```
+
+Replace each `<your project role password>`, including the angle brackets, with
+the password you chose in step 2.
 
 Keep `DATABASE_URL` and `DIRECT_URL` on the same local database. Do not create
 `.env.local` from production values. Apply committed migrations once, then
