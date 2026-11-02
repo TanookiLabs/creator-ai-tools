@@ -99,6 +99,3 @@ project.
 - GitHub integration
 - Vercel deployment support
 - Project instructions for Claude
-
-- [Hackathon show notes](show-notes.md)
-- [Eric’s 201 talk slides](slides/slides.md)

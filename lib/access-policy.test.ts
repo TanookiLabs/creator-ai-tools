@@ -7,7 +7,7 @@ test("only authentication entry points and the landing page are public", () => {
     assert.equal(isPublicPath(path), true, path)
   }
 
-  for (const path of ["/dashboard", "/profile", "/resources", "/resources/deployment", "/unknown"]) {
+  for (const path of ["/dashboard", "/profile", "/profile/settings", "/unknown"]) {
     assert.equal(isPublicPath(path), false, path)
   }
 })

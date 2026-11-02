@@ -9,10 +9,6 @@ const documentPaths = [
   "guides/build/deployment.md",
   "guides/prerequisites/vercel.md",
   "guides/prerequisites/neon.md",
-  "docs/auth-access.md",
-  "docs/prisma-migrations.md",
-  "docs/release-handoff.md",
-  "docs/participant-owned-provider-rehearsal.md",
 ] as const
 const documents = Object.fromEntries(documentPaths.map((path) => [path, readFileSync(path, "utf8")]))
 
@@ -44,11 +40,8 @@ test("the Git-backed Vercel monitor stops on every terminal provider state", () 
 
 test("production migration always uses the dotenv-isolating skill wrapper", () => {
   assert.match(skill, /SKILL_DIR[\s\S]*run-production-migration\.sh/)
-  assert.match(documents["docs/prisma-migrations.md"], /SKILL_DIR[\s\S]*run-production-migration\.sh/)
-  for (const contents of [skill, documents["docs/prisma-migrations.md"]]) {
-    assert.doesNotMatch(contents, /disposable rehearsal|unverified.*rehearsal/i)
-    assert.doesNotMatch(contents, /env -u DATABASE_URL[\s\S]*vercel@latest env run/i)
-  }
+  assert.doesNotMatch(skill, /disposable rehearsal|unverified.*rehearsal/i)
+  assert.doesNotMatch(skill, /env -u DATABASE_URL[\s\S]*vercel@latest env run/i)
   assert.match(skill, /exactly one Marketplace pooled and one unpooled Neon variable/i)
   assert.match(skill, /do not create a redundant write-only\s+`DIRECT_URL`/i)
   assert.match(skill, /only in its child process/i)
@@ -59,14 +52,8 @@ test("documentation records the successful live rehearsal and one confirmation",
     assert.doesNotMatch(contents, /(^|\n)#+\s+Supported production sequence|only supported assistant-led production/im, path)
     assert.doesNotMatch(contents, /deployment receipt|\.deployment-receipts|separate production-variable confirmation|fresh migration approval/i, path)
   }
-  assert.match(documents["docs/release-handoff.md"], /vercel-test-3/i)
-  assert.match(documents["docs/participant-owned-provider-rehearsal.md"], /vercel-test-3/i)
   assert.match(documents["README.md"], /sign-up, sign-out, sign-in, session persistence/i)
   assert.match(documents["CLAUDE.md"], /configuration, reviewed\s+production migration, and deployment are covered by the single final\s+participant confirmation/i)
-  assert.match(documents["docs/auth-access.md"], /For a new project with no secret, generate one locally\s+and stream it directly to Vercel without displaying or persisting it/i)
-  assert.match(documents["docs/auth-access.md"], /asks once before configuration, migration,\s+and deployment/i)
-  assert.match(documents["docs/prisma-migrations.md"], /single final production summary and confirmation/i)
-  assert.doesNotMatch(documents["docs/prisma-migrations.md"], /production configuration record|\breceipt\b/i)
 })
 
 test("provider cleanup and dotenv rules preserve participant state", () => {

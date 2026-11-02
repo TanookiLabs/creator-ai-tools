@@ -19,6 +19,10 @@ changing framework behavior.
 5. During development, run the focused test plus `npm run lint` and
    `npm run typecheck`. Before release, run `npm run verify`.
 
+Integration recipes live in `guides/` (AI chat, OpenRouter, Resend email,
+Inngest background agents, APIs and webhooks, Shopify). Read the matching recipe
+before adding one of those capabilities; they are documentation, not app pages.
+
 `app/` contains routes and layouts. Authenticated routes live under
 `app/(authenticated)/`; `proxy.ts` provides the initial cookie check and the
 authenticated layout performs the server-side session check. Use the existing
